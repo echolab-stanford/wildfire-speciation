@@ -60,7 +60,8 @@ speciation <- left_join(df, points, by = "site_code")
 
 # Merge files to get pm prediction and add to speciation df
 speciation$date <- anydate(speciation$date)
-speciation$grid_id_10km <- as.character(speciation$grid_id_10km)
-pm$grid_id_10km <- as.character(pm$grid_id_10km)
+speciation$grid_id_10km <- as.integer(speciation$grid_id_10km)
 speciation <- left_join(speciation, pm, by = c("grid_id_10km", "date"))
 
+write_rds(speciation, paste(data_path, "smokePM_plumes_speciation_at_sites.rds", sep = ''))
+write_csv(speciation, paste(data_path, "smokePM_plumes_speciation_at_sites.csv", sep = ''))
