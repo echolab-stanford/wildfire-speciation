@@ -37,3 +37,12 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+# Avoid dsstore
+.DS_Store
+.drake
+
+# No data 
+*.csv
+*.tif
+*.rds
