@@ -3,14 +3,14 @@ library(ggplot2)
 library(dplyr)
 
 #setup
-setwd("C:/Users/ayako/OneDrive/Documents/echolab/wip-ayako/wildfire-speciation/scripts")
+setwd("C:/Users/ayako/Documents/StanfordPhD/EchoLab/wildfire-speciation/scripts")
 data_path <- "G:/Shared drives/echolab data/wildfire_speciation/intermediate/"
-fig_path <- "C:/Users/ayako/OneDrive/Documents/echolab/wip-ayako/wildfire-speciation/figures"
+fig_path <- "C:/Users/ayako/Documents/StanfordPhD/EchoLab/wildfire-speciation/figures"
 
 #import data
-data <- read.csv(paste(data_path, "pm_plume_speciation_at_sites.csv", sep = ''))
+data <- read.csv(paste(data_path, "pm_plume_speciation_at_sites_tempAK.csv", sep = ''))
 #file includes row names, so drop the column 
-data <- data[,-1]
+#data <- data[,-1]
 data$smoke_day <- as.factor(data$smoke_day)
 #add a short region name
 data <- data %>% 
@@ -25,10 +25,10 @@ data <- data %>%
   ))
 
 
-vars <- data %>% select(RC_PM2, NH4, tot_metals, ammNO3,ammSO4,
-                        AL, AS, BR, CA, CR, CU, FE, K, MG, MN, NI,
-                        NO3, N2, P, PB, RB, S, SE, SI, SOIL, SO4,
-                        SR, V, ZN, ZR, MF) %>% names()
+vars <- data %>% select(MF, RC_PM2, NH4, tot_metals, ammNO3, ammSO4, AL, AS, BR, 
+                        CA, EC, OC, CHL, CL, CR, CU, FE, K, MG, MN, MO, NA., NI,
+                        NO3, N2, P, PB, RB, S, SE, SI, SOIL, SO4, SR, V, ZN, ZR
+                        )%>% names()
 
 #log transformation
 data_log <- data
