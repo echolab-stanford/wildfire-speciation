@@ -15,24 +15,26 @@ aqs_sf <- all_spec_sites %>%
 # read in fire data
 fire_df <- read_rds(fires_fp) 
 
-i  <- 1
+i <- 1
 firedist <- list()
 
 for(i in 1:length(fire_df)){
   if(nrow(fire_df[[i]])>0){
-    # set crs
+    # subset to valid
     fire_df[[i]] <- fire_df[[i]][st_is_valid(fire_df[[i]]),]
-    st_crs(fire_df[[i]]) <- st_crs(aqs_sf) <- NA
+    # set crs
+    st_crs(fire_df[[i]]) <- st_crs(aqs_sf) # <- NA
     
     fire_df[[i]] <- fire_df[[i]][unlist(lapply(fire_df[[i]]$geometry, function(x){is.nan(x)[1]}))==F,]
   
-  test <- st_nn(x = aqs_sf, y = fire_df[[i]],k = 1, sparse = T, returnDist = T)[[2]] %>% unlist()
+    dist_calc <- st_nn(x = aqs_sf, y = fire_df[[i]], k = 1, sparse = T, returnDist = T)[[2]] %>% unlist()
 
 
     firedist[[i]] <- data.frame(all_spec_sites, 
-                            km2fire = round(test*111), 
+                            km2fire = round(dist_calc/1000), # convert to km
                             Date = as.Date(names(fire_df)[i], format = "%Y%m%d"))
   }else{
+    
     firedist[[i]] <- data.frame(all_spec_sites, 
                                 km2fire = 1e6, 
                                 Date = as.Date(names(fire_df)[i], format = "%Y%m%d"))

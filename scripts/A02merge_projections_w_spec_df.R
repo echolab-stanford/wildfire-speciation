@@ -150,10 +150,18 @@ merge_projections_w_spec_df <- function(raw_spec_df,
         
       
     }) %>% 
-      bind_rows() %>% 
-      filter(!SiteCode %in% c('VIIS1', '720210010', 'BYIS1'))
+      bind_rows() 
+    
+    cleaned_spec_df <- all_spec_proj_clean_df %>% 
+      filter(!SiteCode %in% c('VIIS1', '720210010', 'BYIS1', 'BYISX'))
+    
+    # quick check of the map to make sure things look okay
+    # mapview(cleaned_spec_df %>%
+    #           distinct(SiteCode, Longitude, Latitude) %>% 
+    #           st_as_sf(coords = c(x = 'Longitude', y = 'Latitude'), crs = 4326),
+    #         legend = FALSE, cex = 3)
             
-  return(all_spec_proj_clean_df)
+  return(cleaned_spec_df)
 
 } # end function
 

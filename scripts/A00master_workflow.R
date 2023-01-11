@@ -7,8 +7,8 @@
 setwd('/Users/ekrasovich/Desktop/ECHOLab Local/wildfire-speciation')
 
 # source the functions and libraries
-source("scripts/_functions.R")
-source("scripts/_packages.R")
+source("scripts/0_functions.R")
+source("scripts/0_packages.R")
 wip_gdrive_fp = '/Volumes/GoogleDrive/Shared drives/echolab:data/wildfire_speciation'
 
 # SOURCE FUNCTIONS:
@@ -72,8 +72,8 @@ wildfire_plan <- drake_plan(
   all_spec_sites_out = write.csv(all_spec_sites,
                                  file_out(!!file.path(wip_gdrive_fp, 'intermediate/all_improve_csn_speciation_sites.csv'))),
 
-  # --------------------------------------------------------------------------------
-  # Step 3)  merge speciation data with smoke plume data
+  # ----------------- ---------------------------------------------------------------
+  # Step 3)  merge speciation sites with smoke plume data
   # --------------------------------------------------------------------------------
   improve_smoke_dens_df = target(
     merge_sites_w_smoke_plumes(
@@ -95,25 +95,25 @@ wildfire_plan <- drake_plan(
   # --------------------------------------------------------------------------------
   # # Step 5)  merge speciation data with smoke and plume data
   # --------------------------------------------------------------------------------
-    all_plume_speciation_df = target(
-      merge_speciation_and_plumes(
-        cleaned_spec_df, improve_smoke_dens_fire_dist)),
+    pm_plume_speciation_df = target(
+      merge_speciation_plumes_and_pm(
+        cleaned_spec_df, 
+        improve_smoke_dens_fire_dist,
+        pm_fp = file_in(!!file.path(wip_gdrive_fp, 'intermediate/smokePM2pt5_predictions_daily_10km_20060101-20201231.rds')),
+        grid_fp = file_in(!!file.path(wip_gdrive_fp, 'intermediate/10km_grid_wgs84.shp'))
+        )),
 
+  # --------------------------------------------------------------------------------
+  # # Step 6)  calculate different fractions + add vars relevant for data exploration, clean data 
+  # --------------------------------------------------------------------------------
+  pm_spec4data_exp = target(
+    calculate_and_clean_spec_categories(
+      pm_plume_speciation_df)),
+  
   # save out
-  all_plume_speciation_df_out = write.csv(all_plume_speciation_df,
-    file_out(!!file.path(wip_gdrive_fp, "intermediate/plumes_speciation_at_sites.csv"))),
+  pm_spec4data_exp_out = write.csv(pm_spec4data_exp,
+                                       file_out(!!file.path(wip_gdrive_fp, "intermediate/pm_plume_speciation_at_sites.csv"))),
 
-  # --------------------------------------------------------------------------------
-  # # Step 6)  merge speciation data with marissa's data
-  # --------------------------------------------------------------------------------
-  pm_speciation_df = target(
-    merge_speciation_w_smokePM(
-      cleaned_spec_df, 
-      pm_fp = file_in(!!file.path(wip_gdrive_fp, 'intermediate/smokePM2pt5_predictions_daily_10km_20060101-20201231.rds')),
-      grid_fp = file_in(!!file.path(wip_gdrive_fp, 'intermediate/10km_grid_wgs84.shp'))
-      )),
-  pm_speciation_df_out = write.csv(pm_speciation_df,
-    file_out(!!file.path(wip_gdrive_fp, "intermediate/smokePM_plumes_speciation_at_sites.csv"))),
 
 ) # end plan
 
