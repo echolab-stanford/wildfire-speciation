@@ -45,5 +45,8 @@ merge_speciation_plumes_and_pm <- function(cleaned_spec_df, improve_smoke_dens_f
     st_drop_geometry() %>% 
     dplyr::select(-c(LandUseCode, geometry, grid_id_10km, EPACode))
   
+  # Replace NA values (non-smoke days) to 0
+  speciation_w_pm_df <- speciation_w_pm_df[is.na(speciation_w_pm_df)] = 0
+  
   return(speciation_w_pm_df)
 }

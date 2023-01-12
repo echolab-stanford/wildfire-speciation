@@ -78,8 +78,10 @@ calculate_and_clean_spec_categories <- function(pm_plume_speciation_df) {
                   MO, `NA`, NI, NO3, N2, P, PB, RB, 
                   S, SE, SI, SOIL, SO4, SR, V, ZN, ZR) %>% 
     distinct() %>% 
-    filter(year > 2005)
-  
+    filter(year > 2005) %>% 
+    # Exclude region =  'noncontiguous' and 'outside US'
+    filter(region != 'noncontiguous' & region != 'outside US')
+
   return(cleaned_spec_df)       
 } # end function
 
