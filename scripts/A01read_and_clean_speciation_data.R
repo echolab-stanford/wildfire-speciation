@@ -1,3 +1,5 @@
+# Emma Krasovich Southworth, emmars@stanford.edu
+# Last Updated: Dec 9, 2022
 # Description: This script reads in downloaded speciation data from: 
 # http://views.cira.colostate.edu/fed/Express/ImproveData.aspx
 

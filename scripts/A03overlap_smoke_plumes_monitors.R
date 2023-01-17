@@ -1,3 +1,6 @@
+# Emma Krasovich Southworth, emmars@stanford.edu
+# originally created by Sam Heft-Neal, samhn@stanford.edu
+# Last Updated: Jan 16, 2023
 # Description: This function merges smoke plume data with the CSN + Improve Sites
 
 # smoke_plumes_fp = file.path(wip_gdrive_fp, 'intermediate/hms_smoke_plumes.rds')

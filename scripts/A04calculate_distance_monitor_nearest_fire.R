@@ -1,3 +1,6 @@
+# Emma Krasovich Southworth, emmars@stanford.edu
+# originally created by Sam Heft-Neal, samhn@stanford.edu
+# Last Updated: Jan 16, 2023
 # Description: function to calculate the distance from fire to nearest monitoring station
 
 # fires_fp = file.path(wip_gdrive_fp, 'intermediate/hms_fires.RDS')

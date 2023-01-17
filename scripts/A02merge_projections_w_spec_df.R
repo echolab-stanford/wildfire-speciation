@@ -1,3 +1,5 @@
+# Emma Krasovich Southworth, emmars@stanford.edu
+# Last Updated: Jan 16, 2023
 # Description: This script reads in the location of AQS sites + monitors to creates a dataframe of CSN + IMPROVE sites 
 # 
 # aqs_sites_fp = file.path(wip_gdrive_fp, 'raw/aqs_sites.csv')
