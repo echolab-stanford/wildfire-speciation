@@ -1,7 +1,10 @@
-# Created 10/20/22 | Updated:
-
-# Description:
-# This script will load all relevant libraries + functions that are necessary for the workflow
+# Emma Krasovich Southworth, emmars@stanford.edu
+# Sam Heft-Neal, samhn@stanford.edu
+# Ayako Kawano, akawano@stanford.edu
+# Created: October 29, 2022 | Last Updated: Jan 16, 2023
+# Description: Full workflow for reading in, cleaning, data for the wildfire speciation project.
+# This script will load all relevant libraries + functions that are necessary for the workflow,
+# and run regressions of interest.
 
 # set working directory:
 setwd('/Users/ekrasovich/Desktop/ECHOLab Local/wildfire-speciation')
@@ -106,15 +109,27 @@ wildfire_plan <- drake_plan(
   # --------------------------------------------------------------------------------
   # # Step 6)  calculate different fractions + add vars relevant for data exploration, clean data 
   # --------------------------------------------------------------------------------
-  pm_spec4data_exp = target(
+  clean_pm_spec_df = target(
     calculate_and_clean_spec_categories(
       pm_plume_speciation_df)),
   
   # save out
-  pm_spec4data_exp_out = write.csv(pm_spec4data_exp,
-                                       file_out(!!file.path(wip_gdrive_fp, "intermediate/pm_plume_speciation_at_sites.csv"))),
+  clean_pm_spec_df_out = write.csv(clean_pm_spec_df,
+                                       file_out(!!file.path(wip_gdrive_fp, "intermediate/pm_plume_speciation_at_sites.csv")),
+                                   row.names = FALSE),
 
 
+  
+  # ----------------------------------------------------------------------------
+  # # Step 7)  run regressions 
+  # ---------------------------------------------------------------------------
+  reg_results_df = run_regressions(clean_pm_spec_df),
+  # save out
+  reg_results_df_out = write.csv(reg_results_df,
+                                   file_out(!!file.path(wip_gdrive_fp, "results/regression_results.csv")),
+                                   row.names = FALSE),
+  
+  
 ) # end plan
 
 # make plan

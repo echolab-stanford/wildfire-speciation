@@ -1,4 +1,6 @@
-# Description: merge speciation data with plume data
+# Emma Krasovich Southworth, emmars@stanford.edu
+# Created: Jan 16, 2023 | Last Updated: Jan 16, 2023
+# Description: merge speciation data with plume data, basic cleaning
 
 # loadd(c(cleaned_spec_df, improve_smoke_dens_fire_dist), cache = drake_cache)
 # pm_fp = file.path(wip_gdrive_fp, 'intermediate/smokePM2pt5_predictions_daily_10km_20060101-20201231.rds')
@@ -43,10 +45,11 @@ merge_speciation_plumes_and_pm <- function(cleaned_spec_df, improve_smoke_dens_f
     left_join(pm, 
               by = c("grid_id_10km", "Date")) %>% 
     st_drop_geometry() %>% 
-    dplyr::select(-c(LandUseCode, geometry, grid_id_10km, EPACode))
+    dplyr::select(-c(LandUseCode, geometry, grid_id_10km, EPACode)) %>% 
+    # Replace NA values (non-smoke days) to 0 (no smoke detected)
+    mutate(smokePM_pred = ifelse(is.na(smokePM_pred), 0, smokePM_pred)) %>% 
+    dplyr::select(-c(low_count, med_count, high_count, density_missing))
   
-  # Replace NA values (non-smoke days) to 0
-  speciation_w_pm_df <- speciation_w_pm_df %>% mutate(pm = ifelse(is.na(pm), 0, pm))
   
   return(speciation_w_pm_df)
 }
