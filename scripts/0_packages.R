@@ -1,6 +1,8 @@
 library(tidyverse)
 library(raster)
 require(plotrix)
+library(scales)
+library(forcats)
 library(classInt)
 library(data.table)
 library(maptools)

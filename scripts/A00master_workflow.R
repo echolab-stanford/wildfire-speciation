@@ -118,16 +118,15 @@ wildfire_plan <- drake_plan(
                                        file_out(!!file.path(wip_gdrive_fp, "intermediate/pm_plume_speciation_at_sites.csv")),
                                    row.names = FALSE),
 
-
   
   # ----------------------------------------------------------------------------
   # # Step 7)  run regressions 
   # ---------------------------------------------------------------------------
-  reg_results_df = run_regressions(clean_pm_spec_df),
-  # save out
-  reg_results_df_out = write.csv(reg_results_df,
-                                   file_out(!!file.path(wip_gdrive_fp, "results/regression_results.csv")),
-                                   row.names = FALSE),
+  # reg_results_df = run_regressions(clean_pm_spec_df),
+  # # save out
+  # reg_results_df_out = write.csv(reg_results_df,
+  #                                  file_out(!!file.path(wip_gdrive_fp, "results/regression_results.csv")),
+  #                                  row.names = FALSE),
   
   
 ) # end plan
