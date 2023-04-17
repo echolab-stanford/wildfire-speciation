@@ -4,8 +4,8 @@
 # 
 # aqs_sites_fp = file.path(wip_gdrive_fp, 'raw/aqs_sites.csv')
 # monitors_fp = file.path(wip_gdrive_fp, 'raw/aqs_monitors.csv')
-# csn_sites_fp = file.path(wip_gdrive_fp, 'raw/csn_sites.xlsx')
-# improve_sites_fp = file.path(wip_gdrive_fp, 'raw/improve_sites.xlsx')
+# csn_sites_fp = file.path(wip_gdrive_fp, 'raw/csn_sites.xlsm')
+# improve_sites_fp = file.path(wip_gdrive_fp, 'raw/improve_sites.xlsm')
 # improve_prelim_sites_fp = file.path(wip_gdrive_fp, 'raw/improve_prelim_sites.xlsx')
 # loadd(raw_spec_df, cache = drake_cache)
 

@@ -1,7 +1,7 @@
 # Emma Krasovich Southworth, emmars@stanford.edu
 # Sam Heft-Neal, samhn@stanford.edu
 # Ayako Kawano, akawano@stanford.edu
-# Created: October 29, 2022 | Last Updated: Jan 16, 2023
+# Created: October 29, 2022 | Last Updated: Jan 31, 2023
 # Description: Full workflow for reading in, cleaning, data for the wildfire speciation project.
 # This script will load all relevant libraries + functions that are necessary for the workflow,
 # and run regressions of interest.
@@ -12,13 +12,17 @@ setwd('/Users/ekrasovich/Desktop/ECHOLab Local/wildfire-speciation')
 # source the functions and libraries
 source("scripts/0_functions.R")
 source("scripts/0_packages.R")
-wip_gdrive_fp = '/Volumes/GoogleDrive/Shared drives/echolab:data/wildfire_speciation'
+wip_gdrive_fp = '/Users/ekrasovich/Library/CloudStorage/GoogleDrive-emmars@stanford.edu/Shared drives/echolab:data/wildfire_speciation'
+
 
 # SOURCE FUNCTIONS:
-list.files('scripts', full.names=T, pattern = 'A') %>%
+list.files('scripts', full.names=T, pattern = '(A|B)') %>%
   str_subset("\\.R$") %>%
   str_subset('workflow', negate = TRUE) %>%
+  str_subset('attributable', negate = TRUE) %>%
+  str_subset('regress', negate = TRUE) %>%
   walk(source)
+
 
 wildfire_plan <- drake_plan(
   
@@ -50,40 +54,37 @@ wildfire_plan <- drake_plan(
   ),
   
   # --------------------------------------------------------------------------------
-  # STEP 2) read in monitors and sites from EPA's AQS and merge with location data
+  # STEP 2) read in monitors and sites from EPA's AQS and merge with location data (lat/long/epsg)
   # --------------------------------------------------------------------------------
   # 2a) retrieve EPSG for all sites + merge into speciation data so that every site has lat, long, epsg, elevation
   cleaned_spec_df = target(
     merge_projections_w_spec_df(
       raw_spec_df,
-      aqs_sites_fp = file_in(!!file.path(wip_gdrive_fp, 'raw/aqs_sites.csv')), 
-      monitors_fp = file_in(!!file.path(wip_gdrive_fp, 'raw/aqs_monitors.csv')), 
-      csn_sites_fp = file_in(!!file.path(wip_gdrive_fp, 'raw/csn_sites.xlsx')), 
-      improve_sites_fp = file_in(!!file.path(wip_gdrive_fp, 'raw/improve_sites.xlsx')), 
+      aqs_sites_fp = file_in(!!file.path(wip_gdrive_fp, 'raw/aqs_sites.csv')),
+      monitors_fp = file_in(!!file.path(wip_gdrive_fp, 'raw/aqs_monitors.csv')),
+      csn_sites_fp = file_in(!!file.path(wip_gdrive_fp, 'raw/csn_sites.xlsm')),
+      improve_sites_fp = file_in(!!file.path(wip_gdrive_fp, 'raw/improve_sites.xlsm')),
       improve_prelim_sites_fp = file_in(!!file.path(wip_gdrive_fp, 'raw/improve_prelim_sites.xlsx'))
-    
     )),
-  # save out cleaned speciation data
-  clean_spec_df_out = write.csv(cleaned_spec_df,
-                                file_out(!!file.path(wip_gdrive_fp, 'intermediate/cleaned_speciation_data.csv'))),
   
   
-  # 2b) save out a dataframe of the speciation sites for CSN + IMPROVE
-  all_spec_sites = cleaned_spec_df %>% 
-    distinct(SiteCode, Latitude, Longitude, Dataset, Elevation, epsg) %>% 
+  # 2c) save out a dataframe of the speciation sites for CSN + IMPROVE
+  all_spec_sites = cleaned_spec_df %>%
+    distinct(SiteCode, Latitude, Longitude, Dataset, Elevation, epsg) %>%
     filter(!is.na(Latitude)),
   all_spec_sites_out = write.csv(all_spec_sites,
                                  file_out(!!file.path(wip_gdrive_fp, 'intermediate/all_improve_csn_speciation_sites.csv'))),
 
-  # ----------------- ---------------------------------------------------------------
+  
+  # --------------------------------------------------------------------------------
   # Step 3)  merge speciation sites with smoke plume data
   # --------------------------------------------------------------------------------
   improve_smoke_dens_df = target(
     merge_sites_w_smoke_plumes(
       smoke_plumes_fp = file_in(!!file.path(wip_gdrive_fp, 'intermediate/hms_smoke_plumes.rds')),
-      cleaned_spec_df, 
+      cleaned_spec_df,
       all_spec_sites)),
-  
+
   # --------------------------------------------------------------------------------
   # # Step 4)  merge improve smoke density data with fires, calculate distance to nearest monitor
   # --------------------------------------------------------------------------------
@@ -93,32 +94,38 @@ wildfire_plan <- drake_plan(
       improve_smoke_dens_df,
       all_spec_sites
       )),
-  
-   
+
+
   # --------------------------------------------------------------------------------
   # # Step 5)  merge speciation data with smoke and plume data
   # --------------------------------------------------------------------------------
     pm_plume_speciation_df = target(
       merge_speciation_plumes_and_pm(
-        cleaned_spec_df, 
+        cleaned_spec_df,
         improve_smoke_dens_fire_dist,
         pm_fp = file_in(!!file.path(wip_gdrive_fp, 'intermediate/smokePM2pt5_predictions_daily_10km_20060101-20201231.rds')),
         grid_fp = file_in(!!file.path(wip_gdrive_fp, 'intermediate/10km_grid_wgs84.shp'))
         )),
 
   # --------------------------------------------------------------------------------
-  # # Step 6)  calculate different fractions + add vars relevant for data exploration, clean data 
+  # # Step 6)  calculate different fractions + add vars relevant for data exploration, clean data
   # --------------------------------------------------------------------------------
   clean_pm_spec_df = target(
-    calculate_and_clean_spec_categories(
-      pm_plume_speciation_df)),
-  
+    calculate_and_clean_spec_categories(pm_plume_speciation_df)
+    ),
+
   # save out
   clean_pm_spec_df_out = write.csv(clean_pm_spec_df,
-                                       file_out(!!file.path(wip_gdrive_fp, "intermediate/pm_plume_speciation_at_sites.csv")),
+                                       file_out(!!file.path(wip_gdrive_fp, "clean/pm_plume_speciation_at_sites.csv")),
+                                   row.names = FALSE),
+  
+  clean_pm_spec_sites_df = clean_pm_spec_df %>% 
+    distinct(Dataset, SiteCode, Latitude, Longitude),
+  clean_pm_spec_sites_df_out = write.csv(clean_pm_spec_sites_df,
+                                   file_out(!!file.path(wip_gdrive_fp, "clean/reg_spec_sites.csv")),
                                    row.names = FALSE),
 
-  
+
   # ----------------------------------------------------------------------------
   # # Step 7)  run regressions 
   # ---------------------------------------------------------------------------
@@ -128,6 +135,17 @@ wildfire_plan <- drake_plan(
   #                                  file_out(!!file.path(wip_gdrive_fp, "results/regression_results.csv")),
   #                                  row.names = FALSE),
   
+  # ----------------------------------------------------------------------------
+  # # Step 8)  create descriptive figures + figures for paper
+  # ---------------------------------------------------------------------------
+  
+  # create time series plots for each species
+  conc_rel2avg_df = target(
+    create_indiv_species_time_series_plots(clean_pm_spec_df))
+  
+  # create plots demonstrating how much wildfire drives concentration of a given species
+  
+    
   
 ) # end plan
 
