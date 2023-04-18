@@ -2,96 +2,53 @@
 # Last Updated: April 17, 2023
 # Description: make a time series plot for each species
 
-# loadd(conc_rel2avg_df, cache = drake_cache)
+# loadd(clean_pm_spec_df, cache = drake_cache)
 
 # set up list of species we care about
 species_list <-c("V", "PB", "FE", "CU","CR", "MN", "ZN", "NI", "EC", "OC", "S")
-# ------------------------------------------------------------------------------------
-# RUN SPECIES BY SPECIES REGRESSION - SPECIES DIVIDED BY SAMPLE BASELINE
-# ------------------------------------------------------------------------------------
-predPM_CR_reg = feols(c(CR_val_AL, CR_val_AS, CR_val_BR, CR_val_CA, 
-                        CR_val_CHL, CR_val_CL, CR_val_CR, CR_val_CU, 
-                        CR_val_EC, CR_val_FE, CR_val_K, CR_val_MG, 
-                        CR_val_MN, CR_val_N2, CR_val_NA,
-                        CR_val_NH4, CR_val_NI, CR_val_NO3, CR_val_OC, 
-                        CR_val_OP, CR_val_P, CR_val_PB, CR_val_RB, CR_val_S,
-                        CR_val_SE, CR_val_SI, CR_val_SO4, CR_val_SOIL, 
-                        CR_val_SR, CR_val_TC, CR_val_TI,CR_val_V, CR_val_ZN,
-                        CR_val_ZR, CR_val_ammNO3, CR_val_ammSO4, CR_val_tot_metals) ~ CR_val_smokePM + CR_val_nonsmokePM | 
-                        monitor_month + year, conc_rel2avg_df) # add in region,run a model for each region
 
-# saveRDS(predPM_CR_reg, 
-#         file.path(wip_gdrive_fp, 'intermediate/base_speciation_model_baseline_adj.rds'))
+# select the vars that are needed for the
+reg_df <- clean_pm_spec_df %>% 
+  mutate(monitor_month = paste0(SiteCode,"_",month)) %>% 
+  dplyr::select(Dataset:smoke_day, monitor_month,
+                totPM2.5 = 'PM2.5', 
+                smokePM = 'smokePM_pred',
+                nonsmokePM = 'non_smokePM_cont',
+                V, PB, FE, CU, CR, MN, ZN, NI, EC, OC, S)
 
-# Save coefficients to table
-predPM_CR_coeffs <- coeftable(predPM_CR_reg) %>% 
+# calculate the sample averages for each chemical species:
+spec_baseline_avgs_df <- tibble(
+  species = c("V", "PB", "FE", "CU","CR", "MN", "ZN", "NI", "EC", "OC", "S"),
+  baseline_avg = c(mean(reg_df$V, na.rm = TRUE), 
+                   mean(reg_df$PB, na.rm = TRUE), 
+                   mean(reg_df$FE, na.rm = TRUE), 
+                   mean(reg_df$CU, na.rm = TRUE),  
+                   mean(reg_df$CR, na.rm = TRUE),  
+                   mean(reg_df$MN, na.rm = TRUE), 
+                   mean(reg_df$ZN, na.rm = TRUE),  
+                   mean(reg_df$NI, na.rm = TRUE),  
+                   mean(reg_df$EC, na.rm = TRUE),  
+                   mean(reg_df$OC, na.rm = TRUE),  
+                   mean(reg_df$S, na.rm = TRUE))
+)
+
+# -----------------------------------------------------------------------------
+# RUN REGRESSION FOR SPECIES IN LEVELS + PLOT IN LOGS
+# -----------------------------------------------------------------------------
+levelsPM_reg = feols(c(CR, CU, EC, FE, MN, OC, PB, S, V, ZN)
+                   ~ smokePM + nonsmokePM | 
+                     monitor_month + year, reg_df) 
+
+print(summary(levelsPM_reg))
+
+# get coefficients and prepare for plotting
+levelsPM_coeffs <- coeftable(levelsPM_reg) %>% 
   rename(pval = 'Pr(>|t|)',
          se = 'Std. Error') %>% 
   # get pvalues
   mutate(sig = ifelse(pval > .05, 'non-significant', 'significant')) %>% 
-  mutate(species = str_remove(lhs, 'CR_val_'),
-         coefficient = str_remove(coefficient, 'CR_val_')) %>% 
-  filter(species %in% species_list) %>% 
-  dplyr::select(-lhs, -id) %>% 
-  mutate(spec_type = case_when(
-    species=="V" | species=="PB" | species=="CR" ~ "Toxic metal",
-    species=="FE" | species=="CU" | species=="MN" | species=="ZN" | species=="NI" ~ "Transition metal",
-    species=="EC" | species=="OC" ~ "Secondary organic",
-    species=="S" ~ "Toxicity potentiator",
-    TRUE ~ NA)) 
-
-saveRDS(predPM_CR_coeffs,
-        file.path(wip_gdrive_fp, 'results/conc_ratio_model_reg_coeffs.rds'))
-
-# plot coefficients for the speciation at the avg monitor ---------------------------
-pred_reg_plot <- ggplot(predPM_CR_coeffs, 
-                        aes(x = reorder(species, Estimate), 
-                            y = Estimate, color=spec_type,
-                            ymin = pmax(0, Estimate - se), 
-                            ymax = Estimate + se)) +
-  geom_point(size=3, aes(shape = coefficient), alpha = 0.6, stat = "identity") +
-  geom_errorbar(aes(width = 0.1), stat = "identity") +
-  scale_color_manual(values=c("coral","steelblue", "forestgreen", 'plum')) +
-  scale_shape_manual(values=c(15, 17,18, 19)) +
-  scale_x_discrete(limits = c("CR", "PB", "V",  "CU", "FE", "MN", "NI", "ZN", "EC", "OC", "S")) +
-  # geom_hline(yintercept = 10^0, linetype = "dashed", color = 'grey') +
-  labs(y = 'Coefficient',
-       x = 'Chemical Species',
-       color = 'Species Type',
-       shape = 'PM Type',
-       title = "Speciation of smoke vs nonsmoke PM2.5",
-       subtitle = 'concentrations divided by sample average') +
-  theme_light() 
-pred_reg_plot
-
-
-# ------------------------------------------------------------------------------------
-# RUN SPECIES BY SPECIES REGRESSION - SPECIES IN LOG
-# ------------------------------------------------------------------------------------
-predPM_reg = feols(c(log(conc_val_AL), log(conc_val_AS), log(conc_val_BR), log(conc_val_CA), 
-                     log(conc_val_CHL), log(conc_val_CL), log(conc_val_CR), log(conc_val_CU), 
-                     log(conc_val_EC), log(conc_val_FE), log(conc_val_K), log(conc_val_MG), 
-                     log(conc_val_MN), log(conc_val_N2), log(conc_val_NA), log(conc_val_NH4), 
-                     log(conc_val_NI), log(conc_val_NO3), log(conc_val_OC), log(conc_val_OP), 
-                     log(conc_val_P), log(conc_val_PB), log(conc_val_RB), log(conc_val_S),
-                     log(conc_val_SE), log(conc_val_SI), log(conc_val_SO4), log(conc_val_SOIL), 
-                     log(conc_val_SR), log(conc_val_TC), log(conc_val_TI), log(conc_val_V), 
-                     log(conc_val_ZN), log(conc_val_ZR), log(conc_val_ammNO3), log(conc_val_ammSO4)) 
-                   ~ conc_val_smokePM + conc_val_nonsmokePM | monitor_month + year, conc_rel2avg_df) 
-
-# saveRDS(predPM_reg,
-#         file.path(wip_gdrive_fp, 'results/base_model_speciation.rds'))
-
-# Save coefficients to table
-predPM_coeffs <- coeftable(predPM_reg) %>% 
-  rename(pval = 'Pr(>|t|)',
-         se = 'Std. Error') %>% 
-  # get pvalues
-  mutate(sig = ifelse(pval > .05, 'non-significant', 'significant')) %>% 
-  mutate(species = str_remove(lhs, 'log[(]conc_val_'),
+  mutate(species = str_remove(lhs, 'conc_val_'),
          coefficient = str_remove(coefficient, 'conc_val_')) %>% 
-  mutate(species = str_remove(species, '[)]')) %>% 
-  filter(species %in% species_list) %>% 
   dplyr::select(-lhs, -id)  %>% 
   mutate(spec_type = case_when(
     species=="V" | species=="PB" | species=="CR" ~ "Toxic metal",
@@ -102,33 +59,230 @@ predPM_coeffs <- coeftable(predPM_reg) %>%
   mutate(spec_type = factor(spec_type, 
                             levels = c("Toxic metal", "Transition metal",
                                        "Secondary organic",
-                                       "Toxicity potentiator"))) %>% 
-  arrange(spec_type)
+                                       "Toxicity potentiator"))) 
 
 
-# saveRDS(predPM_coeffs,
-#         file.path(wip_gdrive_fp, 'results/base_model_reg_coeffs.rds'))
+# merge sample avg for each species and divide through betas by sample avg
+PMcoeffs_normalized <- levelsPM_coeffs %>% 
+  left_join(spec_baseline_avgs_df, by = 'species') %>% 
+  mutate(norm_est = Estimate/baseline_avg) # how much a species has changed relative to its baseline
 
 # plot coefficients for the speciation at the avg monitor ---------------------------
-pred_reg_plot <- ggplot(predPM_coeffs, 
+norm_levels_reg_plot <- ggplot(PMcoeffs_normalized, 
                         aes(x = species,
-                            y = Estimate*100, 
-                            color=spec_type, 
-                            ymin = pmax(0, Estimate*100 - se*100), 
-                            ymax = Estimate*100 + se*100)) +
+                            y = norm_est, 
+                            color=spec_type)) +
+                            # ymin = pmax(0, Estimate - se), 
+                            # ymax = Estimate + se)) +
   geom_point(size=3, aes(shape = coefficient), alpha = 0.6, stat = "identity") +
-  geom_errorbar(aes(width = 0.1), stat = "identity") +
-  scale_x_discrete(limits = c("CR", "PB", "V",  "CU", "FE", "MN", "NI", "ZN", "EC", "OC", "S")) +
-  # scale_y_continuous(trans = log10_trans(),
-  #                    breaks = trans_breaks("log10", function(x) 10^x),
-  #                    labels = scales::percent_format(scale = 10)) +
+  #geom_errorbar(aes(width = 0.1), stat = "identity") +
+  scale_x_discrete(limits = c("V", "CR", "PB", "CU", "MN", "NI", "ZN","FE", "S", "EC", "OC")) +
+  scale_y_continuous(trans = log10_trans(),
+                     breaks = trans_breaks("log10", function(x) 10^x),
+                     labels = scales::percent_format(accuracy = .01)) +
   scale_color_manual(values=c("coral","steelblue", "forestgreen", 'plum')) +
   scale_shape_manual(values=c(15, 17,18, 19)) +
   geom_hline(yintercept = 10^0, linetype = "dashed", color = 'grey') +
-  labs(y = '% Change',
+  labs(y = 'Estimate',
        x = 'Chemical Species (ug/m3)',
-       color = 'Species Type',
+       color = 'Species Category',
        shape = 'PM Type',
-       title = "Speciation of smoke vs nonsmoke PM2.5, base model") +
+       title = "Speciation of smoke vs nonsmoke PM2.5, normalized",
+       subtitle = 'nonsmoke + smoke on RHS, monitor-month and year FE') +
   theme_light() 
-pred_reg_plot
+norm_levels_reg_plot
+
+
+# CHECK 1) ARE BETAS THE SAME FOR WHEN WE RUN TOTAL PM ON LHS WITH AND W/O SMOKE
+nonsmoke_control_reg = feols(conc_val_totPM2.5 ~ conc_val_smokePM + conc_val_nonsmokePM | monitor_month + year, conc_rel2avg_df) 
+summary(nonsmoke_control_reg)
+no_control_reg = feols(conc_val_totPM2.5 ~ conc_val_smokePM | monitor_month + year, conc_rel2avg_df) 
+summary(no_control_reg)
+nonosmoke_control_reg = feols(conc_val_totPM2.5 ~ conc_val_nonsmokePM | monitor_month + year, conc_rel2avg_df) 
+summary(nonosmoke_control_reg)
+
+# ---------------------------------------------------------------------------
+# CHECK 2) SPLIT REGRESSION BY CSN VS IMPROVE
+# ---------------------------------------------------------------------------
+# CSN SITES ONLY
+csn_only <- reg_df %>% 
+  filter(Dataset == 'EPACSN')
+
+csn_reg = feols(c(CR, CU, EC, FE, MN, OC, PB, S, V, ZN)
+                     ~ smokePM + nonsmokePM | 
+                       monitor_month + year, csn_only)
+
+# IMPROVE SITES ONLY
+improve_only <- reg_df %>% 
+  filter(Dataset == 'IMPROVE')
+
+improve_reg = feols(c(CR, CU, EC, FE, MN, OC, PB, S, V, ZN)
+                ~ smokePM + nonsmokePM | 
+                  monitor_month + year, improve_only)
+                               
+# get coeffs for both improve and csn
+site_coeffs <- coeftable(improve_reg) %>%
+  mutate(site = 'IMPROVE') %>% 
+  bind_rows(coeftable(csn_reg) %>% 
+              mutate(site = 'EPACSN')) %>% 
+  rename(pval = 'Pr(>|t|)',
+         se = 'Std. Error',
+         species = 'lhs') %>% 
+  # get pvalues
+  mutate(sig = ifelse(pval > .05, 'non-significant', 'significant')) %>% 
+  mutate(spec_type = case_when(
+    species=="V" | species=="PB" | species=="CR" ~ "Toxic metal",
+    species=="FE" | species=="CU" | species=="MN" | species=="ZN" | species=="NI" ~ "Transition metal",
+    species=="EC" | species=="OC" ~ "Secondary organic",
+    species=="S" ~ "Toxicity potentiator",
+    TRUE ~ NA)) %>% 
+  mutate(spec_type = factor(spec_type, 
+                            levels = c("Toxic metal", "Transition metal",
+                                       "Secondary organic",
+                                       "Toxicity potentiator"))) 
+ 
+# plot the comparison between CSN vs Improve
+site_reg_plot <- ggplot(site_coeffs, 
+                        aes(x = species,
+                            y = Estimate, 
+                            color=spec_type)) +
+  geom_point(size=3, aes(shape = coefficient), alpha = 0.6, stat = "identity") +
+  scale_x_discrete(limits = c("V", "CR", "PB", "CU", "MN", "NI", "ZN","FE", "S", "EC", "OC")) +
+  scale_y_continuous(trans = log10_trans(),
+                     breaks = trans_breaks("log10", function(x) 10^x),
+                     labels = scales::percent_format(accuracy = .01)) +
+  scale_color_manual(values=c("coral","steelblue", "forestgreen", 'plum')) +
+  scale_shape_manual(values=c(15, 17,18, 19)) +
+  geom_hline(yintercept = 10^0, linetype = "dashed", color = 'grey') +
+  facet_wrap(~site)+
+  labs(x = 'Chemical Species (ug/m3)',
+       y = 'Estimate',
+       color = 'Site Type',
+       shape = 'PM Type',
+       title = "Comparing CSN vs Improve Speciation") +
+  theme_light() 
+site_reg_plot
+
+# calculate the sample averages for each chemical species:
+csn_baseline_avgs_df <- tibble(
+  species = c("V", "PB", "FE", "CU","CR", "MN", "ZN", "NI", "EC", "OC", "S"),
+  baseline_avg = c(mean(csn_only$V, na.rm = TRUE), 
+                   mean(csn_only$PB, na.rm = TRUE), 
+                   mean(csn_only$FE, na.rm = TRUE), 
+                   mean(csn_only$CU, na.rm = TRUE),  
+                   mean(csn_only$CR, na.rm = TRUE),  
+                   mean(csn_only$MN, na.rm = TRUE), 
+                   mean(csn_only$ZN, na.rm = TRUE),  
+                   mean(csn_only$NI, na.rm = TRUE),  
+                   mean(csn_only$EC, na.rm = TRUE),  
+                   mean(csn_only$OC, na.rm = TRUE),  
+                   mean(csn_only$S, na.rm = TRUE)),
+  site ='EPACSN'
+) %>% 
+  bind_rows(tibble(
+    species = c("V", "PB", "FE", "CU","CR", "MN", "ZN", "NI", "EC", "OC", "S"),
+    baseline_avg = c(mean(improve_only$V, na.rm = TRUE), 
+                     mean(improve_only$PB, na.rm = TRUE), 
+                     mean(improve_only$FE, na.rm = TRUE), 
+                     mean(improve_only$CU, na.rm = TRUE),  
+                     mean(improve_only$CR, na.rm = TRUE),  
+                     mean(improve_only$MN, na.rm = TRUE), 
+                     mean(improve_only$ZN, na.rm = TRUE),  
+                     mean(improve_only$NI, na.rm = TRUE),  
+                     mean(improve_only$EC, na.rm = TRUE),  
+                     mean(improve_only$OC, na.rm = TRUE),  
+                     mean(improve_only$S, na.rm = TRUE)),
+    site ='IMRPOVE'
+  ))
+  
+# merge with coeffs:
+norm_site_coeffs <- site_coeffs %>% 
+  left_join(csn_baseline_avgs_df, by = c('site', 'species')) %>% 
+  mutate(norm_coeff = Estimate/baseline_avg)
+
+# PLOT NORMALIZED CSN VS IMPROVE
+# plot the comparison between CSN vs Improve
+site_reg_plot <- ggplot(norm_site_coeffs, 
+                        aes(x = species,
+                            y = Estimate, 
+                            color=spec_type)) +
+  geom_point(size=3, aes(shape = coefficient), alpha = 0.6, stat = "identity") +
+  scale_x_discrete(limits = c("V", "CR", "PB", "CU", "MN", "NI", "ZN","FE", "S", "EC", "OC")) +
+  scale_y_continuous(trans = log10_trans(),
+                     breaks = trans_breaks("log10", function(x) 10^x),
+                     labels = scales::percent_format(accuracy = .01)) +
+  scale_color_manual(values=c("coral","steelblue", "forestgreen", 'plum')) +
+  scale_shape_manual(values=c(15, 17,18, 19)) +
+  geom_hline(yintercept = 10^0, linetype = "dashed", color = 'grey') +
+  facet_wrap(~site)+
+  labs(x = 'Chemical Species (ug/m3)',
+       y = 'Estimate',
+       color = 'Site Type',
+       shape = 'PM Type',
+       title = "Comparing CSN vs Improve Speciation, normalized") +
+  theme_light() 
+site_reg_plot
+
+
+# ---------------------------------------------------------------------------
+# RUN A MODEL WHERE EACH PM TYPE IS PLOTTED ON SAME
+# ---------------------------------------------------------------------------
+smokePM_reg = feols(c(CR, CU, EC, FE, MN, OC, PB, S, V, ZN) ~ smokePM | monitor_month + year, reg_df)
+nonsmokePM_reg = feols(c(CR, CU, EC, FE, MN, OC, PB, S, V, ZN) ~ nonsmokePM | monitor_month + year, reg_df)
+totPM_reg = feols(c(CR, CU, EC, FE, MN, OC, PB, S, V, ZN) ~ totPM2.5 | monitor_month + year, reg_df)
+
+# COMBINED COEFFS FOR PLOTTING
+pm_type_coeffs <- coeftable(smokePM_reg) %>%
+  mutate(pm_type = 'smoke PM2.5') %>% 
+  bind_rows(coeftable(nonsmokePM_reg) %>%
+              mutate(pm_type = 'nonsmoke PM2.5')) %>% 
+  bind_rows(coeftable(totPM_reg) %>%
+              mutate(pm_type = 'total PM2.5')) %>% 
+  rename(pval = 'Pr(>|t|)',
+         se = 'Std. Error',
+         species = 'lhs') %>% 
+  # get pvalues
+  mutate(sig = ifelse(pval > .05, 'non-significant', 'significant')) %>% 
+  mutate(spec_type = case_when(
+    species=="V" | species=="PB" | species=="CR" ~ "Toxic metal",
+    species=="FE" | species=="CU" | species=="MN" | species=="ZN" | species=="NI" ~ "Transition metal",
+    species=="EC" | species=="OC" ~ "Secondary organic",
+    species=="S" ~ "Toxicity potentiator",
+    TRUE ~ NA)) %>% 
+  mutate(spec_type = factor(spec_type, 
+                            levels = c("Toxic metal", "Transition metal",
+                                       "Secondary organic",
+                                       "Toxicity potentiator"))) 
+
+# join with species baseline avgs + divide to normalize betas
+norm_pm_type_coeffs <- pm_type_coeffs %>% 
+  left_join(spec_baseline_avgs_df, by = 'species') %>%
+  mutate(norm_est = Estimate/baseline_avg)
+
+# plot the normalized values for each smoke/nonsmoke/total pm
+# plot the comparison between CSN vs Improve
+pmtype_reg_plot <- ggplot(norm_pm_type_coeffs, 
+                        aes(x = species,
+                            y = Estimate, 
+                            color=spec_type)) +
+  geom_point(size=3, aes(shape = coefficient), alpha = 0.6, stat = "identity") +
+  scale_x_discrete(limits = c("V", "CR", "PB", "CU", "MN", "NI", "ZN","FE", "S", "EC", "OC")) +
+  scale_y_continuous(trans = log10_trans(),
+                     breaks = trans_breaks("log10", function(x) 10^x),
+                     labels = scales::percent_format(accuracy = .01)) +
+  scale_color_manual(values=c("coral","steelblue", "forestgreen", 'plum')) +
+  scale_shape_manual(values=c(15, 17,18, 19)) +
+  geom_hline(yintercept = 10^0, linetype = "dashed", color = 'grey') +
+  labs(x = 'Chemical Species (ug/m3)',
+       y = 'Estimate',
+       color = 'Species Category',
+       shape = 'PM Type',
+       title = "Comparing PM Types, normalized") +
+  theme_light() 
+pmtype_reg_plot
+
+
+
+
+
+

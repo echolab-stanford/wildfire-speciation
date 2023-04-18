@@ -138,7 +138,6 @@ wildfire_plan <- drake_plan(
   # ----------------------------------------------------------------------------
   # # Step 8)  create descriptive figures + figures for paper
   # ---------------------------------------------------------------------------
-  
   # create time series plots for each species
   conc_rel2avg_df = target(
     create_indiv_species_time_series_plots(clean_pm_spec_df))
