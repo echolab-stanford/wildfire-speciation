@@ -9,11 +9,10 @@ species_list <-c("V", "PB", "FE", "CU","CR", "MN", "ZN", "NI", "EC", "OC", "S")
 
 # select the vars that are needed for the
 reg_df <- clean_pm_spec_df %>% 
-  mutate(monitor_month = paste0(SiteCode,"_",month)) %>% 
   dplyr::select(Dataset:smoke_day, monitor_month,
-                totPM2.5 = 'PM2.5', 
-                smokePM = 'smokePM_pred',
-                nonsmokePM = 'non_smokePM_cont',
+                totPM2.5, 
+                smokePM,
+                nonsmokePM,
                 V, PB, FE, CU, CR, MN, ZN, NI, EC, OC, S)
 
 # calculate the sample averages for each chemical species:
@@ -35,11 +34,11 @@ spec_baseline_avgs_df <- tibble(
 # -----------------------------------------------------------------------------
 # RUN REGRESSION FOR SPECIES IN LEVELS + PLOT IN LOGS
 # -----------------------------------------------------------------------------
-levelsPM_reg = feols(c(CR, CU, EC, FE, MN, OC, PB, S, V, ZN)
+levelsPM_reg = feols(c(CR, CU, EC, FE, MN, NI, OC, PB, S, V, ZN)
                    ~ smokePM + nonsmokePM | 
                      monitor_month + year, reg_df) 
 
-print(summary(levelsPM_reg))
+etable(levelsPM_reg)
 
 # get coefficients and prepare for plotting
 levelsPM_coeffs <- coeftable(levelsPM_reg) %>% 
@@ -47,9 +46,9 @@ levelsPM_coeffs <- coeftable(levelsPM_reg) %>%
          se = 'Std. Error') %>% 
   # get pvalues
   mutate(sig = ifelse(pval > .05, 'non-significant', 'significant')) %>% 
-  mutate(species = str_remove(lhs, 'conc_val_'),
-         coefficient = str_remove(coefficient, 'conc_val_')) %>% 
-  dplyr::select(-lhs, -id)  %>% 
+  rename(species = 'lhs',
+         pm_type = 'coefficient') %>% 
+  dplyr::select(-id)  %>% 
   mutate(spec_type = case_when(
     species=="V" | species=="PB" | species=="CR" ~ "Toxic metal",
     species=="FE" | species=="CU" | species=="MN" | species=="ZN" | species=="NI" ~ "Transition metal",
@@ -65,29 +64,32 @@ levelsPM_coeffs <- coeftable(levelsPM_reg) %>%
 # merge sample avg for each species and divide through betas by sample avg
 PMcoeffs_normalized <- levelsPM_coeffs %>% 
   left_join(spec_baseline_avgs_df, by = 'species') %>% 
-  mutate(norm_est = Estimate/baseline_avg) # how much a species has changed relative to its baseline
+  mutate(norm_est = Estimate/baseline_avg, # how much a species has changed relative to its baseline
+         norm_se = se/baseline_avg)
 
 # plot coefficients for the speciation at the avg monitor ---------------------------
 norm_levels_reg_plot <- ggplot(PMcoeffs_normalized, 
                         aes(x = species,
-                            y = norm_est, 
+                            y = 100*norm_est, 
                             color=spec_type)) +
                             # ymin = pmax(0, Estimate - se), 
                             # ymax = Estimate + se)) +
-  geom_point(size=3, aes(shape = coefficient), alpha = 0.6, stat = "identity") +
-  #geom_errorbar(aes(width = 0.1), stat = "identity") +
+  geom_point(size=3, aes(shape = pm_type), alpha = 0.6, stat = "identity") +
+  geom_errorbar(aes(ymin = (norm_est - norm_se)*100, 
+                    ymax = (norm_est + norm_se)*100, 
+                    width =.2), stat = "identity") +
   scale_x_discrete(limits = c("V", "CR", "PB", "CU", "MN", "NI", "ZN","FE", "S", "EC", "OC")) +
-  scale_y_continuous(trans = log10_trans(),
-                     breaks = trans_breaks("log10", function(x) 10^x),
-                     labels = scales::percent_format(accuracy = .01)) +
-  scale_color_manual(values=c("coral","steelblue", "forestgreen", 'plum')) +
+  # scale_y_continuous(trans = log10_trans(),
+  #                    breaks = trans_breaks("log10", function(x) 10^x)) +
+  #                    #labels = scales::percent_format(accuracy = .01)) +
+  scale_color_manual(values=c("red","goldenrod1", "deepskyblue", 'grey')) +
   scale_shape_manual(values=c(15, 17,18, 19)) +
-  geom_hline(yintercept = 10^0, linetype = "dashed", color = 'grey') +
-  labs(y = 'Estimate',
+  geom_hline(yintercept = 0, linetype = "dashed", color = 'grey') +
+  labs(y = '% Change (ug/m3)',
        x = 'Chemical Species (ug/m3)',
        color = 'Species Category',
        shape = 'PM Type',
-       title = "Speciation of smoke vs nonsmoke PM2.5, normalized",
+       title = "Percent change in species concentration relative to baseline for a 1 ug/m3 increase in smoke and nonsmoke",
        subtitle = 'nonsmoke + smoke on RHS, monitor-month and year FE') +
   theme_light() 
 norm_levels_reg_plot
@@ -282,7 +284,9 @@ pmtype_reg_plot <- ggplot(norm_pm_type_coeffs,
 pmtype_reg_plot
 
 
+return(reg_df)
 
+}
 
 
 

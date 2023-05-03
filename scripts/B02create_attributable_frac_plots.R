@@ -2,9 +2,9 @@
 # Last Updated: April 6, 2023
 # Description: make a time series plot for each species
 
-# loadd(conc_rel2avg_df, cache = drake_cache)
+# loadd(clean_pm_spec_df, cache = drake_cache)
 
-# create_attributable_frac_plots <- function(conc_rel2avg_df)
+create_attributable_frac_plots <- function(clean_pm_spec_df)
 
 # set up list of species we care about
 species_list <-c("V", "PB", "FE", "CU","CR", "MN", "ZN", "NI", "EC", "OC", "S")
@@ -14,16 +14,16 @@ species_list <-c("V", "PB", "FE", "CU","CR", "MN", "ZN", "NI", "EC", "OC", "S")
 # or total exposure above some concentration threshold, 
 # is driven by wildfire smoke vs other PM sources?
 ################################################################################
-selected_spec_df <- conc_rel2avg_df %>% 
-  dplyr::select(Dataset:monitor_month, conc_val_V, conc_val_PB, conc_val_FE, 
-                conc_val_CU, conc_val_CR, conc_val_MN, conc_val_ZN, conc_val_NI,
-                conc_val_EC, conc_val_OC, conc_val_S, conc_val_smokePM, 
-                conc_val_nonsmokePM, conc_val_totPM2.5) %>% 
-  mutate_if(is.numeric, ~ifelse(is.nan(.), NA, .)) 
+selected_spec_df <- clean_pm_spec_df %>% 
+  dplyr::select(Dataset:monitor_month, V, PB, FE, 
+                CU, CR, MN, ZN, NI,
+                EC, OC, S, smokePM, 
+                nonsmokePM, totPM2.5) 
 
-base_reg = feols(c(conc_val_V, conc_val_PB, conc_val_FE, 
-                   conc_val_CU, conc_val_CR, conc_val_MN, conc_val_ZN, conc_val_NI,
-                   conc_val_EC, conc_val_OC, conc_val_S) ~ conc_val_smokePM + conc_val_nonsmokePM | 
+# get coeffs
+base_reg = feols(c(V, PB, FE, 
+                   CU, CR, MN, ZN, NI,
+                   EC, OC, S) ~ smokePM + nonsmokePM | 
                    monitor_month + year, selected_spec_df) # add in region,run a model for each region
 
 # Save coefficients to table
@@ -32,10 +32,8 @@ pred_base_coeffs <- coeftable(base_reg) %>%
          se = 'Std. Error') %>% 
   # get pvalues
   mutate(sig = ifelse(pval > .05, 'non-significant', 'significant')) %>% 
-  mutate(species = str_remove(lhs, 'conc_val_'),
-         coefficient = str_remove(coefficient, 'conc_val_')) %>% 
-  dplyr::select(-lhs, -id) 
-
+  rename(species = 'lhs') %>% 
+  dplyr::select(-id) 
 
 
 # get betas to then weight smoke and nonsmoke concentrations
@@ -45,7 +43,6 @@ betas <- pred_base_coeffs %>%
     coefficient == 'nonsmokePM' ~ 0
   )) %>% 
   dplyr::select(smoke_day, Estimate, species)
-
 
 # test
 # current_species <- species_list[3]
@@ -125,8 +122,8 @@ all_spec_quantiles_df <- purrr::map_df(species_list, function(current_species) {
   
   # PLOT ONE AT A TIME:
   current_species_frac_plot <- ggplot(frac_species_smoke_df,
-                              aes(x = quantile,
-                                  y = fraction_smoke, color = spec_type, group = spec_type)) + # to get in percent
+                                      aes(x = quantile,
+                                          y = fraction_smoke, color = spec_type, group = spec_type)) + # to get in percent
     geom_line(size=.5) +
     geom_point(size=1.5, shape = 16, alpha = 0.6) +
     geom_text(aes(label = num_days), vjust = 0) +
@@ -140,7 +137,7 @@ all_spec_quantiles_df <- purrr::map_df(species_list, function(current_species) {
          title = "Contribution of wildfire smoke to overall and extreme daily species concentrations") +
     theme_minimal()
   species_frac_plot
- 
+  
 }) %>% 
   bind_rows() %>%  
   distinct()
@@ -166,7 +163,7 @@ species_frac_plot <- ggplot(classified_pred_spec %>%
   # geom_text(aes(label = prettyNum(q_val)), vjust = -6, color = 'black', size = 2) +
   scale_color_manual(values=c("coral","steelblue", "forestgreen", 'plum', 'goldenrod3', 'navy',
                                      "red", "aquamarine", 'violetred', 'yellow', 'darkorange')) +
-  facet_wrap(spec_type ~ species, scales = 'free', ncol = 3) +
+                                       facet_wrap(spec_type ~ species, scales = 'free', ncol = 3) +
   ylim(0, 50) +
   labs(x = 'Daily Concentration >= quantile',
        y = '% of contribution from wildfire smoke',
@@ -184,7 +181,7 @@ region_reg = feols(c(conc_val_V, conc_val_PB, conc_val_FE,
                      conc_val_EC, conc_val_OC, conc_val_S)
                    ~ conc_val_smokePM + conc_val_nonsmokePM | 
                      monitor_month + year, fsplit = ~region, data = selected_spec_df) # add in region,run a model for each region
-                   
+
 
 # Save coefficients to table
 pred_region_coeffs <- coeftable(region_reg) %>% 
@@ -465,3 +462,4 @@ montior_species_frac_plot <- ggplot(all_monitors_df,
        title = "Contribution of wildfire smoke to overall and extreme daily species concentrations by Monitor") +
   theme_light() 
 montior_species_frac_plot 
+

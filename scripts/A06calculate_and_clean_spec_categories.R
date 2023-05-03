@@ -55,6 +55,7 @@ calculate_and_clean_spec_categories <- function(pm_plume_speciation_df) {
     distinct() %>% 
     # change inf to NA
     mutate_if(is.numeric, ~ifelse(. == Inf, NA, .)) %>% 
+    mutate_if(is.numeric, ~ifelse(is.nan(.), NA, .)) %>% 
     # calculate station smoke and non smoke using total PM var (PM2.5)
     mutate(non_smokePM_cont = ifelse(!is.na(PM2.5), PM2.5 - smokePM_pred, NA)) %>% 
     dplyr::select(Dataset, SiteCode, Date, State, region, season, year, month, doy, 
@@ -65,8 +66,15 @@ calculate_and_clean_spec_categories <- function(pm_plume_speciation_df) {
                   MO, `NA`, NI, NO3, N2, P, PB, RB, 
                   S, SE, SI, SOIL, SO4, SR, V, ZN, TI,
                   ZR, units, Elevation, Latitude, Longitude, epsg) %>% 
-   
-    
+    mutate(monitor_month = paste0(SiteCode,"_",month)) %>% 
+    rename(totPM2.5 = 'PM2.5', 
+           smokePM = 'smokePM_pred',
+           nonsmokePM = 'non_smokePM_cont') %>% 
+    mutate(pm_flag = case_when(
+      totPM2.5 < smokePM ~'drop', 
+      TRUE ~ 'keep')) %>% 
+    filter(pm_flag == 'keep')
+                  
   return(cleaned_spec_df)       
 } # end function
 
