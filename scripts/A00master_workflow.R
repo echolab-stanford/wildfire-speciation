@@ -13,6 +13,7 @@ setwd('/Users/ekrasovich/Desktop/ECHOLab Local/wildfire-speciation')
 source("scripts/0_functions.R")
 source("scripts/0_packages.R")
 wip_gdrive_fp = '/Users/ekrasovich/Library/CloudStorage/GoogleDrive-emmars@stanford.edu/Shared drives/echolab:data/wildfire_speciation'
+options(scipen = 999)
 
 
 # SOURCE FUNCTIONS:
@@ -21,6 +22,7 @@ list.files('scripts', full.names=T, pattern = '(A|B)') %>%
   str_subset('workflow', negate = TRUE) %>%
   str_subset('attributable', negate = TRUE) %>%
   str_subset('regress', negate = TRUE) %>%
+  str_subset('B', negate = TRUE) %>%
   walk(source)
 
 
