@@ -82,8 +82,8 @@ all_spec_quantiles_df <- purrr::map_df(species_list, function(current_species) {
            q70 = ifelse(pred_allPM >= current_quantiles[8], '70%', NA),
            q80 = ifelse(pred_allPM >= current_quantiles[9], '80%', NA),
            q90 = ifelse(pred_allPM >= current_quantiles[10], '90%', NA),
-           q100 = ifelse(pred_allPM >= current_quantiles[11], '100%', NA)) 
-  
+           q100 = ifelse(pred_allPM >= current_quantiles[11], '100%', NA))
+           
   
   # get list of quantiles
   q_list <- c('q0', 'q10', 'q20', 'q30', 'q40', 'q50', 'q60', 'q70', 'q80', 'q90', 'q100')
@@ -121,22 +121,22 @@ all_spec_quantiles_df <- purrr::map_df(species_list, function(current_species) {
   
   
   # PLOT ONE AT A TIME:
-  current_species_frac_plot <- ggplot(frac_species_smoke_df,
-                                      aes(x = quantile,
-                                          y = fraction_smoke, color = spec_type, group = spec_type)) + # to get in percent
-    geom_line(size=.5) +
-    geom_point(size=1.5, shape = 16, alpha = 0.6) +
-    geom_text(aes(label = num_days), vjust = 0) +
-    scale_color_manual(values=c("coral","steelblue", "forestgreen", 'plum', 'goldenrod3', 'navy',
-                                       "red", "aquamarine", 'violetred', 'yellow', 'darkorange')) +
-                                         facet_wrap(spec_type ~ species, scales = 'free', ncol = 3) +
-    ylim(0, 50) +
-    labs(x = 'Daily Concentration >= quantile',
-         y = '% of contribution from wildfire smoke',
-         color = 'Species',
-         title = "Contribution of wildfire smoke to overall and extreme daily species concentrations") +
-    theme_minimal()
-  species_frac_plot
+  # current_species_frac_plot <- ggplot(frac_species_smoke_df,
+  #                                     aes(x = quantile,
+  #                                         y = fraction_smoke, color = spec_type, group = spec_type)) + # to get in percent
+  #   geom_line(size=.5) +
+  #   geom_point(size=1.5, shape = 16, alpha = 0.6) +
+  #   geom_text(aes(label = num_days), vjust = 0) +
+  #   scale_color_manual(values=c("coral","steelblue", "forestgreen", 'plum', 'goldenrod3', 'navy',
+  #                                      "red", "aquamarine", 'violetred', 'yellow', 'darkorange')) +
+  #                                        facet_wrap(spec_type ~ species, scales = 'free', ncol = 3) +
+  #   ylim(0, 50) +
+  #   labs(x = 'Daily Concentration >= quantile',
+  #        y = '% of contribution from wildfire smoke',
+  #        color = 'Species',
+  #        title = "Contribution of wildfire smoke to overall and extreme daily species concentrations") +
+  #   theme_minimal()
+  # species_frac_plot
   
 }) %>% 
   bind_rows() %>%  
@@ -170,6 +170,138 @@ species_frac_plot <- ggplot(classified_pred_spec %>%
        color = 'Species',
        title = "Contribution of wildfire smoke to overall and extreme daily species concentrations") +
   theme_minimal()
+species_frac_plot
+
+# -------------------------------------------------------------------------------------------
+# CREATE ATTRIBUTABLE FRACTION PLOTS WITH BOTTOM 25, MIDDLE 50, and TOP 25
+# -------------------------------------------------------------------------------------------
+# current_species <- species_list[1]
+summ_stat_quantiles_df <- purrr::map_df(species_list, function(current_species) {
+  
+  # step one: 
+  current_weighted_conc_df <- selected_spec_df %>% 
+    mutate_if(is.numeric, ~ifelse(is.nan(.), NA, .)) %>% 
+    dplyr::select(-c(State, season, doy, monitor_month)) %>% 
+    dplyr::select(Dataset, SiteCode, Date, region, totPM2.5,
+                  smoke_day, smokePM, nonsmokePM, !!sym(current_species)) %>% 
+    left_join(betas %>% 
+                filter(species == current_species), 
+              by = 'smoke_day') %>% 
+    filter(!!sym(current_species) >= 0) %>% 
+    mutate(pred_nonsmoke = Estimate* nonsmokePM,
+           pred_smoke = Estimate*smokePM) %>% 
+    mutate(pred_allPM = pred_nonsmoke+pred_smoke) %>% 
+    distinct() %>% 
+    filter(!is.na(totPM2.5))
+  
+  
+  # get quantiles for summed weighted total PM
+  current_quantiles <- quantile(current_weighted_conc_df$pred_allPM, 
+                                seq(0, 1, .25), na.rm = TRUE)
+  
+  # create dataframe where all concentrations of a species have been identified to be above or below a quantile
+  quant_df <- current_weighted_conc_df %>%
+    mutate(quant_flag = case_when(
+          pred_allPM < current_quantiles[2] ~ 'bottom 25%',
+           pred_allPM >= current_quantiles[2] & pred_allPM <= current_quantiles[4] ~ 'middle 50%',
+           pred_allPM > current_quantiles[4] ~ 'top 25%')) %>% 
+    mutate(q_conc = case_when(
+      pred_allPM < current_quantiles[2] ~ paste('below', current_quantiles[2]),
+      pred_allPM >= current_quantiles[2] & pred_allPM <= current_quantiles[4] ~ paste0('between ', current_quantiles[2], ' - ', current_quantiles[4]),
+      pred_allPM > current_quantiles[4] ~ paste('above', current_quantiles[4]))
+    )
+
+  # get list of quantiles
+  q_list <- c('bottom 25%', 'middle 50%', 'top 25%')
+  # current_quant <- q_list[1] # test
+  
+  # map over the each quantile and create a dataframe for the specific species
+  # that should help us plot how much of total exposure to a given species is driven by wildfire smoke
+  frac_species_smoke_df <- purrr::map_df(q_list, function(current_quant) {
+    
+    # create a dateframe for each quantile and bind together:
+    current_q_df <- quant_df %>% 
+      # filter to the first quantile by converting the string to a symbol so R recognizes it as a column name
+      filter(quant_flag == current_quant) %>% 
+      # sum all smoke concentrations and nonsmoke concentrations within a given quantile cutoff
+      mutate(tot_pred_nonsmoke = sum(pred_nonsmoke, na.rm=TRUE),
+             tot_pred_smoke = sum(pred_smoke, na.rm= TRUE),
+             tot_pred_conc = sum(pred_allPM, na.rm = TRUE)) %>% 
+      # how many days are we summing over in this quantile
+      mutate(num_days = max(row_number())) %>% 
+      mutate(conc_frac_attrib2smoke = 100*(tot_pred_smoke/tot_pred_conc)) %>% 
+      distinct(species, num_days, quant_flag, q_conc, conc_frac_attrib2smoke, tot_pred_smoke, tot_pred_nonsmoke, tot_pred_conc) 
+
+  }) %>% 
+    bind_rows() # for all species, bind together
+  
+  # now create an order to the quantiles for plotting
+  frac_species_smoke_df <- frac_species_smoke_df %>% 
+    mutate(quant_flag = factor(quant_flag, 
+                             levels = c("bottom 25%", "middle 50%", "top 25%"))) %>% 
+    mutate(spec_type = case_when(
+      species=="V" | species=="PB" | species=="CR" ~ "Toxic metal",
+      species=="FE" | species=="CU" | species=="MN" | species=="ZN" | species=="NI" ~ "Transition metal",
+      species=="EC" | species=="OC" ~ "Secondary organic",
+      species=="S" ~ "Toxicity potentiator",
+      TRUE ~ NA)) 
+  
+}) %>% 
+  bind_rows() %>%  
+  distinct()#  %>% 
+  # mutate(q_val = prettyNum(round(q_val, digits = 5)))
+
+# adjust dataframe so that it can plot stacked area plot
+quantiles_long_df <- summ_stat_quantiles_df %>% 
+  dplyr::select(spec_type, species, quant_flag, tot_pred_smoke, tot_pred_nonsmoke, tot_pred_conc) %>% 
+  pivot_longer(cols = c(tot_pred_smoke, tot_pred_nonsmoke, tot_pred_conc), 
+               names_to = 'pm_type', values_to = 'tot_pred_conc_in_quantile') %>% 
+  mutate(pm_type = factor(pm_type, levels = c("tot_pred_conc", 
+                                              "tot_pred_nonsmoke",
+                                              "tot_pred_smoke")))  
+
+
+# PLOT FIG 3: MAKE STACKED AREA PLOTS
+stacked_species_quantile_bar_plot <- ggplot(quantiles_long_df,
+                                             aes(x = quant_flag,
+                                                 y = tot_pred_conc_in_quantile,
+                                                 fill = pm_type
+                                             )) + 
+  geom_bar(position="fill", stat="identity", alpha =.6) +
+  scale_fill_manual(name = 'PM2.5 Type',
+                    values=c('grey60',"steelblue", "coral"),
+                    labels = c('Total Species Conc in PM2.5 (ug/m3)',
+                               'Nonsmoke PM2.5 Species Conc (ug/m3)',
+                               'Smoke PM2.5 Species Conc (ug/m3)'
+                               )) +
+  facet_wrap(~species, scales = 'free', ncol = 2) +
+  scale_x_discrete(limits = c("bottom 25%", "middle 50%", "top 25%")) +
+  theme(axis.text.x = element_text(angle=45, hjust = 1)) +
+  labs(x = 'Quantiles of Predicted Species Concentration (ug/m3)',
+       y = paste('Percent Attributable to PM2.5 Type'),
+       title = 'Contribution of smoke and nonsmoke PM2.5 to species concentration') +
+  theme_minimal()
+stacked_species_quantile_bar_plot
+
+
+species_frac_plot <- ggplot(summ_stat_quantiles_df,
+                            aes(x = quant_flag,
+                                y = conc_frac_attrib2smoke, 
+                                color = spec_type, group = spec_type)) + # to get in percent
+  geom_line(size=.5) +
+  geom_point(size=1.5, shape = 16, alpha = 0.6) +
+  # geom_text(aes(label = species), vjust = -2, color = 'black', size = 2) +
+  # geom_text(aes(label = prettyNum(num_days, big.mark = ",")), vjust = -2, color = 'black', size = 2) +
+  facet_wrap(~species, scales = 'free', ncol = 2) +
+  # geom_text(aes(label = prettyNum(q_val)), vjust = -6, color = 'black', size = 2) +
+  scale_color_manual(values=c("red","goldenrod1", "deepskyblue", 'grey')) +
+                                       # facet_wrap(spec_type ~ species, scales = 'free', ncol = 3) +
+  labs(x = 'Daily Species Concentration Quantiles',
+       y = 'Percent Attributable to Smoke PM2.5',
+       color = 'Species',
+       title = "Average contribution of smoke and nonsmoke PM2.5 to species concentration at different concentration quantiles") +
+  theme_minimal()
+
 species_frac_plot
 
 
