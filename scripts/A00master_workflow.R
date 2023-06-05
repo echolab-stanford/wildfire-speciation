@@ -13,6 +13,8 @@ setwd('/Users/ekrasovich/Desktop/ECHOLab Local/wildfire-speciation')
 source("scripts/0_functions.R")
 source("scripts/0_packages.R")
 wip_gdrive_fp = '/Users/ekrasovich/Library/CloudStorage/GoogleDrive-emmars@stanford.edu/Shared drives/echolab:data/wildfire_speciation'
+data_gdrive_fp = '/Users/ekrasovich/Library/CloudStorage/GoogleDrive-emmars@stanford.edu/Shared drives/echolab:data/'
+
 options(scipen = 999)
 
 
