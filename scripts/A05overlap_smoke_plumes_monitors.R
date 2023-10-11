@@ -4,16 +4,16 @@
 # Description: This function merges smoke plume data with the CSN + Improve Sites
 
 # smoke_plumes_fp = file.path(wip_gdrive_fp, 'intermediate/hms_smoke_plumes.rds')
-# loadd(c(cleaned_spec_df, all_spec_sites), cache =drake_cache)
+# loadd(c(spec_w_smoke_pm_df, CONUS_spec_sites_df), cache =drake_cache)
 
 # function
-merge_sites_w_smoke_plumes <- function(smoke_plumes_fp, cleaned_spec_df, all_spec_sites) {
+merge_sites_w_smoke_plumes <- function(smoke_plumes_fp, spec_w_smoke_pm_df, CONUS_spec_sites_df) {
+
 
 # CONVERT MONITOR DATAFRAME TO A SPATIAL OBJECT USING SF -----------------------
 # turn monitor locations into an SF object:
-  aqs_sf <- cleaned_spec_df %>% 
-    distinct(Dataset, SiteCode, Longitude, Latitude, State, epsg, Elevation) %>% 
-    st_as_sf(coords = c(x = 'Longitude', y = 'Latitude'), crs = 4326)
+  sites_sf <- CONUS_spec_sites_df %>% 
+    st_as_sf(coords = c(x = 'long', y = 'lat'), crs = 4326)
 
 
 # READ IN SMOKE DATA -----------------------------------------------------------
@@ -33,14 +33,14 @@ for(i in 1:length(smoke)){
     if("Density" %in% names(smoke[[i]]) == F) {
       smoke[[i]]$Density = NA; smoke[[i]]$density_missing = 1} # end if statement
     
-    st_crs(smoke[[i]]) <- st_crs(aqs_sf) <- NA # EK dont make this NA, keep it in a projection
+    st_crs(smoke[[i]]) <- st_crs(sites_sf) <- NA # EK dont make this NA, keep it in a projection
     smoke[[i]] <- smoke[[i]][st_is_valid(smoke[[i]]),]
     
-   # mapview(smoke[[i]], cex = 5) + mapview(overlap) + mapview(aqs_sf, cex = 3)
+   # mapview(smoke[[i]], cex = 5) + mapview(overlap) + mapview(sites_sf, cex = 3)
     
-    overlap <- st_join(aqs_sf, smoke[[i]], left = T) %>% 
+    overlap <- st_join(sites_sf, smoke[[i]], left = T) %>% 
       dplyr::filter(!is.na(Start)) %>%
-      group_by(SiteCode) %>%
+      group_by(site_id) %>%
       summarise(low_count = sum(as.numeric(as.character(Density))==5, na.rm = T),
                 med_count = sum(as.numeric(as.character(Density))==16, na.rm = T),
                 high_count = sum(as.numeric(as.character(Density))== 27, na.rm = T),
@@ -49,7 +49,7 @@ for(i in 1:length(smoke)){
     
   }else{
     overlap <- data.frame(
-      SiteCode = aqs_sf$SiteCode, 
+      site_id = sites_sf$site_id, 
       low_count = 0,
       med_count = 0,
       high_count = 0,
@@ -59,7 +59,7 @@ for(i in 1:length(smoke)){
     } # end if else statement
   
   
-  ov[[i]] <- left_join(all_spec_sites, overlap) %>% 
+  ov[[i]] <- left_join(spec_w_smoke_pm_df, overlap) %>% 
     mutate(
       Date = as.Date(names(smoke)[i], format = "%Y%m%d"),
       smoke_day = replace(smoke_day, is.na(smoke_day),0),
@@ -69,8 +69,8 @@ for(i in 1:length(smoke)){
       density_missing = replace(density_missing, is.na(density_missing),1)
       ) %>% 
     dplyr::select(-geometry) %>% 
-    dplyr::select(Dataset,SiteCode, Date,
-                  Latitude, Longitude, epsg, Elevation, smoke_day,  
+    dplyr::select(Dataset,site_id, Date,
+                  lat, long, epsg, smoke_day,  
                   low_count, med_count, high_count, density_missing) #density missing is wrong
 
   if(round(i/50)==i/50){print(paste("done with ",i," of ", length(smoke)))}
@@ -78,9 +78,7 @@ for(i in 1:length(smoke)){
 
 improve_smoke <- data.frame(data.table::rbindlist(ov)) 
 
-# read in smoke data
-smoke <- readRDS(smoke_plumes_fp) 
-
+# calculate density
 density <- data.frame(Date = as.Date(names(smoke), format = "%Y%m%d"), 
                       density_missing = NA)
 for(i in 1:length(smoke)){
@@ -92,9 +90,9 @@ for(i in 1:length(smoke)){
   
 }
 
-improve_smoke <- improve_smoke %>% dplyr::select(-density_missing)
-improve_smoke <- left_join(improve_smoke, density, by = 'Date')
+smoke_days_w_plumes <- improve_smoke %>% dplyr::select(-density_missing)
+smoke_days_w_plumes <- left_join(smoke_days_w_plumes, density, by = 'Date')
 
-return(improve_smoke)
+return(smoke_days_w_plumes)
 
 } # end function
