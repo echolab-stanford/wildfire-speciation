@@ -4,15 +4,18 @@
 # Description: This function merges smoke plume data with the CSN + Improve Sites
 
 # smoke_plumes_fp = file.path(wip_gdrive_fp, 'intermediate/hms_smoke_plumes.rds')
-# loadd(c(spec_w_smoke_pm_df, CONUS_spec_sites_df), cache =drake_cache)
+# loadd(c(spec_w_smoke_pm_df, CONUS_spec_sites_df), cache = drake::drake_cache(".drake"))
 
 # function
 merge_sites_w_smoke_plumes <- function(smoke_plumes_fp, spec_w_smoke_pm_df, CONUS_spec_sites_df) {
 
+  # set up parallel computing
+  plan(multisession) # from future package, allows to parallelize
 
 # CONVERT MONITOR DATAFRAME TO A SPATIAL OBJECT USING SF -----------------------
 # turn monitor locations into an SF object:
   sites_sf <- CONUS_spec_sites_df %>% 
+    distinct() %>% 
     st_as_sf(coords = c(x = 'long', y = 'lat'), crs = 4326)
 
 

@@ -2,29 +2,42 @@
 # Last Updated: June 20, 2023
 # Description: create a regional marginal coefficient plot
 
-# loadd(clean_PMspec_df, cache = drake::drake_cache("scripts/.drake"))
+# loadd(clean_PMspec_df, cache = drake::drake_cache(".drake"))
 
 # function
 create_regional_coeff_plots <- function(clean_PMspec_df) {
   
-# set up list of species we care about
-species_list <- c("V", "PB", "FE", "CU","CR", "MN", "ZN", "NI", "EC", "OC", "S")
-
 # select the vars that are needed for the
 reg_df <- clean_PMspec_df %>% 
   mutate(monitor_month = paste0(site_id,"_",month)) 
 
 # calculate species regional averages for each chemical species:
 spec_regional_avgs_df <- reg_df %>% 
-  dplyr::select(Dataset:region,monitor_month, AL:ammSO4) %>% 
-  pivot_longer(cols =c(AL:ammSO4), names_to = 'species', values_to = 'conc') %>% 
+  dplyr::select(Dataset:region,monitor_month, AL:ZR, smoke_day) %>% 
+  pivot_longer(cols =c(AL:ZR), names_to = 'species', values_to = 'conc') %>% 
+  filter(smoke_day == 'nonsmoke day') %>% 
   group_by(region, species) %>% 
   dplyr::summarise(baseline_avg = mean(conc, na.rm = TRUE), .groups = 'drop') 
+
+# # Create a sample dataset
+# hist_data <- reg_df %>% 
+#   dplyr::select(Dataset:region,monitor_month, AL:ZR, smoke_day) %>% 
+#   pivot_longer(cols =c(AL:ZR), names_to = 'species', values_to = 'conc')
+# 
+# # Create a histogram plot
+# histogram_plot <- ggplot(hist_data, aes(x = conc, group = smoke_day)) +
+#   geom_histogram(binwidth = 0.5, fill = "blue", color = "black") +
+#   labs(title = "Histogram Plot", x = "Values", y = "Frequency") +
+#   facet_wrap(~species, scales = 'free_x') +
+#   theme_minimal()
+# histogram_plot
 
 #  ------------------------------------------------------------------
 # REGIONAL ANALYSIS ----------------------------------------
 #  ------------------------------------------------------------------
-regional_PM_reg = feols(c(CR, CU, EC, FE, MN, NI, OC, PB, S, V, ZN)
+regional_PM_reg = feols(c(AL,AS,BR, CA, CL, CHL,CR, CU, EC, FE, 
+                          K, MG,MN, `NA`, NI, NO3, OC, P,  PB, RB,
+                          S,  SE, SI, SO4, SOIL, SR, TI, V,  ZN, ZR)
                         ~ smokePM + nonsmokePM_MF | 
                           monitor_month + year, reg_df, fsplit = ~region, cluster = 'site_id') 
 # etable(regional_PM_reg) # look at regression results
@@ -38,7 +51,9 @@ CIs <- confint(
          CI25 = '2.5 %',
          CI975 = '97.5 %') %>% 
   mutate(measure = 'MF') %>% 
-  dplyr::select(-id)
+  dplyr::select(-id, -sample.var) %>% 
+  filter(pm_type == 'smokePM') %>% 
+  filter(region != 'Full sample')
 
 
 # get coefficients and prepare for plotting
@@ -49,20 +64,14 @@ regionalPM_coeffs <- coeftable(regional_PM_reg) %>%
          pm_type = 'coefficient',
          region = 'sample') %>% 
   filter(pm_type == 'smokePM') %>% 
+  filter(region != 'Full sample') %>% 
   # get pvalues
   mutate(sig = ifelse(pval > .05, 'non-significant', 'significant')) %>% 
   dplyr::select(-id, -sample.var, -`t value`)  %>% 
-  mutate(spec_type = case_when(
-    species=="V" | species=="PB" | species=="CR" ~ "Toxic metal",
-    species=="FE" | species=="CU" | species=="MN" | species=="ZN" | species=="NI" ~ "Transition metal",
-    species=="EC" | species=="OC" ~ "Secondary organic",
-    species=="S" ~ "Toxicity potentiator",
-    TRUE ~ NA)) %>% 
-  mutate(spec_type = factor(spec_type, 
-                            levels = c("Toxic metal", "Transition metal",
-                                       "Secondary organic",
-                                       "Toxicity potentiator"))) %>% 
-  left_join(CIs, by = c('species', 'pm_type',  'region'))
+  left_join(parameter_categories, by = 'species') %>% 
+  mutate(measure = 'MF') %>% 
+  left_join(CIs,
+            by = c('region','species', 'pm_type', 'measure'))
 
 
 # merge sample avg for each species and divide each species' betas by full sample avg for each species
@@ -70,115 +79,193 @@ regionalPMcoeffs_normalized <- regionalPM_coeffs %>%
   left_join(spec_regional_avgs_df, by = c('region', 'species')) %>% 
   mutate(norm_est = Estimate/baseline_avg, # how much a species has changed relative to its baseline
          norm_CI25 = CI25/baseline_avg,
-         norm_CI975 = CI975/baseline_avg) %>% 
-  filter(region != 'Full sample') 
+         norm_CI975 = CI975/baseline_avg) 
+
+limits <- c("Organic Carbon (OC)", "Elemental carbon (EC)", # secondary organics
+            #secondary inorganic
+            "Sulfate (SO4)", "Nitrate (NO3)",
+            # nontoxic metals
+            "Strontium (Sr)",  "Calcium (Ca)", "Silicon (Si)", "Magnesium (Mg)", "Rubidium (Rb)",
+            # nontoxic nonmetals
+            "Soil", 
+            # toxicity potentiator
+            "Sulfur (S)",
+            # toxic nonmetals
+            "Phosphorus (P)", "Bromine (Br)", "Selenium (Se)", "Chlorine (Cl)", "Chloride (Chl)",
+            # toxic metals
+            "Potassium (K)",  "Zinc (Zn)", "Manganese (Mn)", "Titanium (Ti)",
+            "Alumnium (Al)", "Iron (Fe)", "Copper (Cu)",
+            "Vanadium (V)", "Nickel (Ni)", "Sodium (Na)", "Zirconium (Zr)",
+            # heavy metals
+            "Arsenic (As)", "Lead (Pb)", "Chromium (Cr)")
 
 
-# marginal plots
-regional_reg_plot <- ggplot(regionalPMcoeffs_normalized, 
-                            aes(x = species,
-                                y = 100*norm_est, 
+axis_names <- regionalPMcoeffs_normalized %>% 
+  distinct(spec_type, species_long)
+# set up empty list to store plots
+plot_list = list()
+#Loop
+for(i in 1:length(unique(axis_names$spec_type))) {
+
+  current_df <- regionalPMcoeffs_normalized %>% 
+    filter(spec_type == unique(axis_names$spec_type)[i])
+  
+  current_limits <- limits[limits %in% current_df$species_long]
+  
+  # marginal plots
+  regional_reg_plot <- ggplot(current_df, 
+                              aes(x = species_long,
+                                  y = 100*norm_est, 
+                                  color = region)) +
+    geom_point(size=2, alpha = 0.7, stat = "identity", position = position_dodge(width = .5)) +
+    geom_linerange(aes(ymin = (100*norm_CI25), 
+                       ymax = (100*norm_CI975)), stat = "identity", position = position_dodge(width = .5)) +
+    scale_x_discrete(limits = current_limits) +
+    scale_color_manual(values=c("#DC863B", "#FAD510",
+                                "#649373", "#1B5656", 
+                                "#5A283E", "#F2300F")) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = 'grey') +
+    labs(#y = '% Change relative to regional baseline on nonsmoke days',
+         #x = 'Chemical Species',
+         #color = 'Region',
+         title = paste0(unique(current_df$spec_type))
+    ) +
+    coord_flip() +
+    theme_light() +
+    theme(panel.border = element_blank(), 
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+          axis.line = element_line(colour = "black"),
+          title= element_text(size=12, face='bold'),
+          axis.title.x = element_text(size=12, face = 'plain'),
+          axis.title.y = element_text(size=12, face = 'plain')) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = 'grey') +
+    guides(color = 'none')
+
+  plot_list[[i]] = regional_reg_plot
+
+}
+#Plot
+all_regional_plots <- wrap_plots(plot_list, ncol = 1) + 
+  plot_annotation(title = "Regional differences in the chemical composition of wildfire smoke PM2.5") 
+all_regional_plots
+
+
+# save file
+ggsave(
+  filename = 'Fig3_regional_smoke_coeffs_facet.pdf',
+  plot = all_regional_plots,
+  path = file.path(wip_gdrive_fp, 'figures/Fig3'),
+  scale = 1,
+  width = 8,
+  height = 10,
+  dpi = 320) 
+
+
+
+# PLOT ALL TOGETHER NO FACETS
+regional_reg_plot <- ggplot(regionalPMcoeffs_normalized,
+                            aes(x = species_long,
+                                y = 100*norm_est,
                                 color = region)) +
-                                #shape = spec_type)) +
-  geom_point(size=3, alpha = 0.7, stat = "identity") + # shape = pm_type
-  geom_linerange(aes(ymin = (100*norm_CI25), 
-                     ymax = (100*norm_CI975)), stat = "identity") +
-  scale_x_discrete(limits = c("CR", "V", "PB", "NI", "CU", "MN", "ZN","FE", "S", "EC", "OC")) +
-  #scale_y_log10() +
+  geom_point(size=3, alpha = 0.7, stat = "identity", position = position_dodge(width = .6)) +
+  geom_linerange(aes(ymin = (100*norm_CI25),
+                     ymax = (100*norm_CI975)), stat = "identity", position = position_dodge(width = .6)) +
+  scale_x_discrete(limits = rev(limits)) +
   scale_color_manual(values=c("#DC863B", "#FAD510",
-                              "#649373", "#1B5656", 
+                              "#649373", "#1B5656",
                               "#5A283E", "#F2300F")) +
-  #scale_shape_manual(values=c(0, 1, 2, 5, 8, 6)) +
   geom_hline(yintercept = 0, linetype = "dashed", color = 'grey') +
-  #facet_wrap(~region, ncol = 6) +
-  labs(y = '% Change relative to regional baseline',
+  labs(y = '% Change relative to regional baseline on nonsmoke days',
        x = 'Chemical Species',
        color = 'Region',
-       #shape = 'Species Category',
-       title = "Regional differences in the chemical composition of wildfire smoke PM2.5"
-       ) +
-  theme_minimal() +
-  theme(panel.border = element_blank(), 
+       #title = "Regional differences in the chemical composition of wildfire smoke PM2.5"
+  ) +
+  # coord_flip() +
+  theme_light() +
+  theme(panel.border = element_blank(),
         panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         axis.line = element_line(colour = "black"),
         title= element_text(size=12, face='bold'),
         axis.title.x = element_text(size=11, face = 'plain'),
         axis.title.y = element_text(size=11, face = 'plain')) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = 'grey')
+  geom_hline(yintercept = 0, linetype = "dashed", color = 'grey') +
+  guides(color = 'none') + theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis text by 90 degrees
 regional_reg_plot
 
 # save file
 ggsave(
-  filename = 'Fig3_regional_smoke_coeffs.png',
+  filename = 'Fig3_regional_smoke_coeffs_NOFACET_wide_new.pdf',
   plot = regional_reg_plot,
   path = file.path(wip_gdrive_fp, 'figures/Fig3'),
   scale = 1,
-  width = 10,
-  height = 6,
+  width = 11,
+  height = 8,
   dpi = 320) 
 
 
 
-# PLOT BY REGION AS WELL -------------------------------------------------------
-region_list <- unique(regionalPMcoeffs_normalized$region)
-
-# current_region <- region_list[4]
-
-plot_each_region <- map_df(region_list, function(current_region) {
-  
-  current_regionalPMcoeffs <- regionalPMcoeffs_normalized %>% 
-    mutate(color_id = case_when(
-      region == 'midwest' ~ "#DC863B",
-      region == 'northeast' ~ "#FAD510", 
-      region == 'pacific' ~ "#649373", 
-      region == 'rocky_mountain' ~ "#1B5656", 
-      region == 'southeast' ~ "#5A283E", 
-      region == 'southwest' ~ "#F2300F"
-    )) %>% 
-    filter(region == current_region) 
-
-# marginal plots
-one_region_reg_plot <- ggplot(current_regionalPMcoeffs, 
-                            aes(x = species,
-                                y = 100*norm_est, 
-                                color = region)) +
-  #shape = spec_type)) +
-  geom_point(size=3, alpha = 0.7, stat = "identity") + # shape = pm_type
-  geom_linerange(aes(ymin = (100*norm_CI25), 
-                     ymax = (100*norm_CI975)), stat = "identity") +
-  scale_x_discrete(limits = c("CR", "V", "PB", "NI", "CU", "MN", "ZN","FE", "S", "EC", "OC")) +
-  scale_color_manual(values=c(unique(current_regionalPMcoeffs$color_id))) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = 'grey') +
-  labs(y = '% Change relative to regional baseline',
-       x = 'Chemical Species',
-       #color = 'Region',
-       #shape = 'Species Category',
-       title = paste0(str_to_title(current_region))
-  ) +
-  theme_minimal() +
-  theme(panel.border = element_blank(), 
-        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        axis.line = element_line(colour = "black"),
-        title= element_text(size=12, face='bold'),
-        axis.title.x = element_text(size=11, face = 'plain'),
-        axis.title.y = element_text(size=11, face = 'plain')) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = 'grey') +
-  guides(color = FALSE)
-one_region_reg_plot
-
-# save file
-ggsave(
-  filename = paste('Fig3_', current_region, '_smoke_coeffs.png'),
-  plot = one_region_reg_plot,
-  path = file.path(wip_gdrive_fp, 'figures/Fig3'),
-  scale = 1,
-  width = 6,
-  height = 4,
-  dpi = 320) 
-
-current_regionalPMcoeffs
-}) 
+# 
+# # PLOT BY REGION AS WELL -------------------------------------------------------
+# region_list <- unique(regionalPMcoeffs_normalized$region)
+# 
+# # current_region <- region_list[4]
+# 
+# plot_each_region <- map_df(region_list, function(current_region) {
+#   
+#   current_regionalPMcoeffs <- regionalPMcoeffs_normalized %>% 
+#     mutate(color_id = case_when(
+#       region == 'midwest' ~ "#DC863B",
+#       region == 'northeast' ~ "#FAD510", 
+#       region == 'pacific' ~ "#649373", 
+#       region == 'rocky_mountain' ~ "#1B5656", 
+#       region == 'southeast' ~ "#5A283E", 
+#       region == 'southwest' ~ "#F2300F"
+#     )) %>% 
+#     filter(region == current_region) 
+# 
+# # marginal plots
+# one_region_reg_plot <- ggplot(current_regionalPMcoeffs, 
+#                             aes(x = species,
+#                                 y = 100*norm_est, 
+#                                 color = region)) +
+#   #shape = spec_type)) +
+#   geom_point(size=3, alpha = 0.7, stat = "identity") + # shape = pm_type
+#   geom_linerange(aes(ymin = (100*norm_CI25), 
+#                      ymax = (100*norm_CI975)), stat = "identity") +
+#   scale_x_discrete(limits = c("CR", "V", "PB", "NI", "CU", "MN", "ZN","FE", "S", "EC", "OC")) +
+#   scale_color_manual(values=c(unique(current_regionalPMcoeffs$color_id))) +
+#   geom_hline(yintercept = 0, linetype = "dashed", color = 'grey') +
+#   labs(y = '% Change relative to regional baseline',
+#        x = 'Chemical Species',
+#        #color = 'Region',
+#        #shape = 'Species Category',
+#        title = paste0(str_to_title(current_region))
+#   ) +
+#   theme_minimal() +
+#   theme(panel.border = element_blank(), 
+#         panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+#         axis.line = element_line(colour = "black"),
+#         title= element_text(size=12, face='bold'),
+#         axis.title.x = element_text(size=11, face = 'plain'),
+#         axis.title.y = element_text(size=11, face = 'plain')) +
+#   geom_hline(yintercept = 0, linetype = "dashed", color = 'grey') +
+#   guides(color = FALSE)
+# one_region_reg_plot
+# 
+# # save file
+# ggsave(
+#   filename = paste('Fig3_', current_region, '_smoke_coeffs.png'),
+#   plot = one_region_reg_plot,
+#   path = file.path(wip_gdrive_fp, 'figures/Fig3'),
+#   scale = 1,
+#   width = 6,
+#   height = 4,
+#   dpi = 320) 
+# 
+# current_regionalPMcoeffs
+# }) 
 
 
 return(regionalPMcoeffs_normalized)
 }
+
