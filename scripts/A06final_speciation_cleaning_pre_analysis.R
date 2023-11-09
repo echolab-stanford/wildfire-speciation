@@ -2,10 +2,10 @@
 # Last Updated: Jan 16, 2023
 # Description: set up speciation and smoke data for descriptive statistics
 
-# loadd(spec_smoke_plumes_df, cache = drake_cache)
+# loadd(spec_w_smoke_pm_df, cache = drake_cache)
 
 
-final_speciation_cleaning_pre_analysis <- function(spec_smoke_plumes_df) {
+final_speciation_cleaning_pre_analysis <- function(spec_w_smoke_pm_df) {
   
   # step 1: clean up the speciation data
   cleaned_spec_df <- spec_w_smoke_pm_df %>% 
@@ -70,13 +70,19 @@ final_speciation_cleaning_pre_analysis <- function(spec_smoke_plumes_df) {
     # calculate station smoke and non smoke using total PM var (PM2.5)
     mutate(nonsmokePM_MF = MF_adj - smokePM2.5,
            nonsmokePM_RCFM = RCFM_adj - smokePM2.5) %>% 
+    # add an indicator for smoke day or nonsmoke day
+    mutate(smoke_day = case_when(
+      smokePM2.5 == 0 ~ 'nonsmoke day',
+      smokePM2.5 != 0 ~ "smoke day")) %>% 
+    # add a monitor month for FEs
+    mutate(monitor_month = paste0(site_id,"_",month)) %>% 
     dplyr::select(Dataset, state_name, region, season, year, month, doy, 
-                  duration, st_date, end_date, Date, site_id, 
+                  duration, st_date, end_date, monitor_month, Date, site_id, smoke_day, 
                   MF_adj, RCFM_adj, smokePM = 'smokePM2.5', nonsmokePM_MF, nonsmokePM_RCFM,
                   AL, AS, BR, CA, CHL, CL, CR, CU,
                   EC, FE, K, MG, MN, `NA`, NI, NO3, N2, OC, P, PB,
                   RB, S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR, units, 
-                  long, lat, epsg, MF, RCFM) 
+                  long, lat, epsg, MF, RCFM)
   
   return(cleaned_spec_df)       
 } # end function

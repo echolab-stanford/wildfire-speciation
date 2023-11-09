@@ -5,14 +5,14 @@
 # useful infor: https://www.epa.gov/risk/conducting-human-health-risk-assessment
 # https://www.epa.gov/expobox/exposure-assessment-tools-routes-inhalation
 #  
-# improve_params_fp = file.path(wip_gdrive_fp, 'raw/IMPROVE_parameters.csv')
-# CAS_nos_fp = file.path(wip_gdrive_fp, 'raw/CSN_parameters.csv')
-# RSL_table_fp = file.path(wip_gdrive_fp, 'raw/RSL Table/chronic_RSL.xlsx')
-# loadd(clean_PMspec_df, cache = drake::drake_cache("scripts/.drake"))
+improve_params_fp = file.path(wip_gdrive_fp, 'raw/IMPROVE_parameters.csv')
+CAS_nos_fp = file.path(wip_gdrive_fp, 'raw/CSN_parameters.csv')
+RSL_table_fp = file.path(wip_gdrive_fp, 'raw/RSL Table/chronic_RSL.xlsx')
+loadd(clean_PMspec_df, cache = drake::drake_cache(".drake"))
+avg_mon_pred_species <- read.csv(file.path(wip_gdrive_fp, 'intermediate/avg_monthly_attributable_conc.csv'))
 
 # create a crosswalk between parameters and CAS numbers and toxicity thresholds
 #combine_speciation_w_CASno_and_RSL <- function(improve_params_fp, CAS_nos_fp, RSL_table_fp, clean_PMspec_df)
-
 
 # read in all the possible parameters in the improve data (which we use to determine what parameters to keep in CSN data)
 improve_params <- read.csv(improve_params_fp) %>% 
@@ -67,100 +67,6 @@ RSL_chronic <- read_xlsx(file.path(RSL_table_fp), sheet = 4) %>%
     Analyte == "Vanadium and Compounds" ~ 'V',
     Analyte == "Zirconium" ~ 'ZR')) 
  
-
-
-# # select the vars that are needed for the
-reg_df <- clean_PMspec_df %>%
-  mutate(monitor_month = paste0(site_id,"_", month)) %>% 
-  dplyr::select(Dataset, Date, year, month, monitor_month, site_id, state_name, region,
-                MF_adj, smokePM, nonsmokePM_MF, AS, MN, NI, V, CL, PB, AL, SE) 
- 
-
-# # run the regressions ----------------------------------------------------------
-AS_reg = feols(AS ~ smokePM + nonsmokePM_MF | monitor_month + year, reg_df, cluster = 'site_id')
-MN_reg = feols(MN ~ smokePM + nonsmokePM_MF | monitor_month + year, reg_df, cluster = 'site_id')
-NI_reg = feols(AS ~ smokePM + nonsmokePM_MF | monitor_month + year, reg_df, cluster = 'site_id')
-V_reg = feols(V ~ smokePM + nonsmokePM_MF | monitor_month + year, reg_df, cluster = 'site_id')
-CL_reg = feols(CL ~ smokePM + nonsmokePM_MF | monitor_month + year, reg_df, cluster = 'site_id')
-PB_reg = feols(PB ~ smokePM + nonsmokePM_MF | monitor_month + year, reg_df, cluster = 'site_id')
-AL_reg = feols(AL ~ smokePM + nonsmokePM_MF | monitor_month + year, reg_df, cluster = 'site_id')
-SE_reg = feols(SE ~ smokePM + nonsmokePM_MF | monitor_month + year, reg_df, cluster = 'site_id')
-
-
-# NOW USE THE RESULTS OF EACH REGRESSION TO PREDICT
-nonsmoke0_df <- reg_df %>%
-  # 0 out nonsmoke
-  mutate(nonsmokePM_MF = 0)
-
-smoke0_df <- reg_df %>%
-  # 0 out nonsmoke
-  mutate(smokePM = 0)
-
-# now predict with new data
-# predict the smoke concentration
-predicted_smoke_conc_df <- reg_df %>%
-  # this gets the fraction of a species attributable to smoke
-  mutate(AS_smoke_pred = predict(AS_reg, newdata = nonsmoke0_df),
-         MN_smoke_pred = predict(MN_reg, newdata = nonsmoke0_df),
-         NI_smoke_pred = predict(NI_reg, newdata = nonsmoke0_df),
-         V_smoke_pred = predict(V_reg, newdata = nonsmoke0_df),
-         CL_smoke_pred = predict(CL_reg, newdata = nonsmoke0_df),
-         PB_smoke_pred = predict(PB_reg, newdata = nonsmoke0_df),
-        AL_smoke_pred = predict(AL_reg, newdata = nonsmoke0_df),
-        SE_smoke_pred = predict(SE_reg, newdata = nonsmoke0_df)) %>% 
-  dplyr::select(Dataset:site_id, month, region, monitor_month, MF_adj, smokePM, nonsmokePM_MF, 
-                AS_smoke_pred, MN_smoke_pred, NI_smoke_pred, V_smoke_pred,
-                CL_smoke_pred,PB_smoke_pred, AL_smoke_pred, SE_smoke_pred) %>% 
-  pivot_longer(cols = c(AS_smoke_pred, MN_smoke_pred, NI_smoke_pred, V_smoke_pred,
-                        CL_smoke_pred,PB_smoke_pred, AL_smoke_pred, SE_smoke_pred),
-               names_to = 'species', values_to = "smokePM_pred_conc") %>% 
-  filter(smokePM_pred_conc > 0) %>% 
-  mutate(species= str_remove(species, "_smoke_pred"))
-
-
-# now predict with new data
-predicted_nonsmoke_conc_df <- reg_df %>%
-  # this gets the fraction of a species attributable to nonsmoke
-  mutate(AS_nonsmoke_pred = predict(AS_reg, newdata = smoke0_df),
-         MN_nonsmoke_pred = predict(MN_reg, newdata = smoke0_df),
-         NI_nonsmoke_pred = predict(NI_reg, newdata = smoke0_df),
-         V_nonsmoke_pred = predict(V_reg, newdata = smoke0_df),
-         CL_nonsmoke_pred = predict(CL_reg, newdata = smoke0_df),
-         PB_nonsmoke_pred = predict(PB_reg, newdata = smoke0_df),
-         AL_nonsmoke_pred = predict(AL_reg, newdata = smoke0_df),
-         SE_nonsmoke_pred = predict(SE_reg, newdata = smoke0_df)) %>% 
-  dplyr::select(Dataset:site_id, month, region, monitor_month, MF_adj, smokePM, nonsmokePM_MF, 
-                AS_nonsmoke_pred, MN_nonsmoke_pred, NI_nonsmoke_pred, V_nonsmoke_pred,
-                CL_nonsmoke_pred,PB_nonsmoke_pred, AL_nonsmoke_pred, SE_nonsmoke_pred) %>% 
-  pivot_longer(cols = c(AS_nonsmoke_pred, MN_nonsmoke_pred, NI_nonsmoke_pred, V_nonsmoke_pred,
-                        CL_nonsmoke_pred,PB_nonsmoke_pred, AL_nonsmoke_pred, SE_nonsmoke_pred),
-               names_to = 'species', values_to = "nonsmokePM_pred_conc") %>% 
-  filter(nonsmokePM_pred_conc > 0) %>% 
-  mutate(species= str_remove(species, "_nonsmoke_pred"))
-
-# rm(MN_reg, NI_reg, PB_reg, CL_reg, AS_reg, AL_reg, nonsmoke0_df, smoke0_df, reg_df, SE_reg, V_reg) # drop to save memory
-
-# calculate total concentration in PM2.5
-predicted_concs <- predicted_smoke_conc_df %>%
-  left_join(predicted_nonsmoke_conc_df) %>% 
-  mutate(totPM_conc = smokePM_pred_conc + nonsmokePM_pred_conc)
-
- 
-# calculate avg attributable fraction of species concentration to total concentration
-avg_conc_daily_CONUS <- predicted_concs %>%
-  # first average at each site then average across all days
-  group_by(year, month, Date, region, site_id, species) %>%
-  dplyr::summarise(avg_smoke_conc = mean(smokePM_pred_conc, na.rm = TRUE),
-                   avg_nonsmoke_conc = mean(nonsmokePM_pred_conc, na.rm = TRUE),
-                   avg_tot_conc = mean(totPM_conc, na.rm = TRUE)) %>%
-  ungroup() %>%
-  # now average across all sites for a given date
-  group_by(year, month, Date, species) %>% # can add in regions
-  dplyr::summarise(avg_smoke_conc = mean(avg_smoke_conc, na.rm = TRUE),
-                   avg_nonsmoke_conc = mean(avg_nonsmoke_conc, na.rm = TRUE),
-                   avg_tot_conc = mean(avg_tot_conc, na.rm = TRUE)) %>%
-  ungroup() 
-
 avg_daily_pred_conc_w_RSL <- avg_conc_daily_CONUS %>% 
   left_join(RSL_chronic, by = 'species')
 
@@ -254,5 +160,97 @@ mean_AS_totPM <- mean(predicted_concs$tot_pred_conc, na.rm = TRUE)
 #   facet_wrap(~region, scales = 'free_y') +
 #   theme_light()
 #   AS_threshold_timeseries
-  
+
+# # select the vars that are needed for the
+# reg_df <- clean_PMspec_df %>%
+#   mutate(monitor_month = paste0(site_id,"_", month)) %>% 
+#   dplyr::select(Dataset, Date, year, month, monitor_month, site_id, state_name, region,
+#                 MF_adj, smokePM, nonsmokePM_MF, AS, MN, NI, V, CL, PB, AL, SE) 
+# 
+# 
+# # # run the regressions ----------------------------------------------------------
+# AS_reg = feols(AS ~ smokePM + nonsmokePM_MF | monitor_month + year, reg_df, cluster = 'site_id')
+# MN_reg = feols(MN ~ smokePM + nonsmokePM_MF | monitor_month + year, reg_df, cluster = 'site_id')
+# NI_reg = feols(AS ~ smokePM + nonsmokePM_MF | monitor_month + year, reg_df, cluster = 'site_id')
+# V_reg = feols(V ~ smokePM + nonsmokePM_MF | monitor_month + year, reg_df, cluster = 'site_id')
+# CL_reg = feols(CL ~ smokePM + nonsmokePM_MF | monitor_month + year, reg_df, cluster = 'site_id')
+# PB_reg = feols(PB ~ smokePM + nonsmokePM_MF | monitor_month + year, reg_df, cluster = 'site_id')
+# AL_reg = feols(AL ~ smokePM + nonsmokePM_MF | monitor_month + year, reg_df, cluster = 'site_id')
+# SE_reg = feols(SE ~ smokePM + nonsmokePM_MF | monitor_month + year, reg_df, cluster = 'site_id')
+# 
+# 
+# # NOW USE THE RESULTS OF EACH REGRESSION TO PREDICT
+# nonsmoke0_df <- reg_df %>%
+#   # 0 out nonsmoke
+#   mutate(nonsmokePM_MF = 0)
+# 
+# smoke0_df <- reg_df %>%
+#   # 0 out nonsmoke
+#   mutate(smokePM = 0)
+# 
+# # now predict with new data
+# # predict the smoke concentration
+# predicted_smoke_conc_df <- reg_df %>%
+#   # this gets the fraction of a species attributable to smoke
+#   mutate(AS_smoke_pred = predict(AS_reg, newdata = nonsmoke0_df),
+#          MN_smoke_pred = predict(MN_reg, newdata = nonsmoke0_df),
+#          NI_smoke_pred = predict(NI_reg, newdata = nonsmoke0_df),
+#          V_smoke_pred = predict(V_reg, newdata = nonsmoke0_df),
+#          CL_smoke_pred = predict(CL_reg, newdata = nonsmoke0_df),
+#          PB_smoke_pred = predict(PB_reg, newdata = nonsmoke0_df),
+#          AL_smoke_pred = predict(AL_reg, newdata = nonsmoke0_df),
+#          SE_smoke_pred = predict(SE_reg, newdata = nonsmoke0_df)) %>% 
+#   dplyr::select(Dataset:site_id, month, region, monitor_month, MF_adj, smokePM, nonsmokePM_MF, 
+#                 AS_smoke_pred, MN_smoke_pred, NI_smoke_pred, V_smoke_pred,
+#                 CL_smoke_pred,PB_smoke_pred, AL_smoke_pred, SE_smoke_pred) %>% 
+#   pivot_longer(cols = c(AS_smoke_pred, MN_smoke_pred, NI_smoke_pred, V_smoke_pred,
+#                         CL_smoke_pred,PB_smoke_pred, AL_smoke_pred, SE_smoke_pred),
+#                names_to = 'species', values_to = "smokePM_pred_conc") %>% 
+#   filter(smokePM_pred_conc > 0) %>% 
+#   mutate(species= str_remove(species, "_smoke_pred"))
+# 
+# 
+# # now predict with new data
+# predicted_nonsmoke_conc_df <- reg_df %>%
+#   # this gets the fraction of a species attributable to nonsmoke
+#   mutate(AS_nonsmoke_pred = predict(AS_reg, newdata = smoke0_df),
+#          MN_nonsmoke_pred = predict(MN_reg, newdata = smoke0_df),
+#          NI_nonsmoke_pred = predict(NI_reg, newdata = smoke0_df),
+#          V_nonsmoke_pred = predict(V_reg, newdata = smoke0_df),
+#          CL_nonsmoke_pred = predict(CL_reg, newdata = smoke0_df),
+#          PB_nonsmoke_pred = predict(PB_reg, newdata = smoke0_df),
+#          AL_nonsmoke_pred = predict(AL_reg, newdata = smoke0_df),
+#          SE_nonsmoke_pred = predict(SE_reg, newdata = smoke0_df)) %>% 
+#   dplyr::select(Dataset:site_id, month, region, monitor_month, MF_adj, smokePM, nonsmokePM_MF, 
+#                 AS_nonsmoke_pred, MN_nonsmoke_pred, NI_nonsmoke_pred, V_nonsmoke_pred,
+#                 CL_nonsmoke_pred,PB_nonsmoke_pred, AL_nonsmoke_pred, SE_nonsmoke_pred) %>% 
+#   pivot_longer(cols = c(AS_nonsmoke_pred, MN_nonsmoke_pred, NI_nonsmoke_pred, V_nonsmoke_pred,
+#                         CL_nonsmoke_pred,PB_nonsmoke_pred, AL_nonsmoke_pred, SE_nonsmoke_pred),
+#                names_to = 'species', values_to = "nonsmokePM_pred_conc") %>% 
+#   filter(nonsmokePM_pred_conc > 0) %>% 
+#   mutate(species= str_remove(species, "_nonsmoke_pred"))
+# 
+# # rm(MN_reg, NI_reg, PB_reg, CL_reg, AS_reg, AL_reg, nonsmoke0_df, smoke0_df, reg_df, SE_reg, V_reg) # drop to save memory
+# 
+# # calculate total concentration in PM2.5
+# predicted_concs <- predicted_smoke_conc_df %>%
+#   left_join(predicted_nonsmoke_conc_df) %>% 
+#   mutate(totPM_conc = smokePM_pred_conc + nonsmokePM_pred_conc)
+# 
+# 
+# # calculate avg attributable fraction of species concentration to total concentration
+# avg_conc_daily_CONUS <- predicted_concs %>%
+#   # first average at each site then average across all days
+#   group_by(year, month, Date, region, site_id, species) %>%
+#   dplyr::summarise(avg_smoke_conc = mean(smokePM_pred_conc, na.rm = TRUE),
+#                    avg_nonsmoke_conc = mean(nonsmokePM_pred_conc, na.rm = TRUE),
+#                    avg_tot_conc = mean(totPM_conc, na.rm = TRUE)) %>%
+#   ungroup() %>%
+#   # now average across all sites for a given date
+#   group_by(year, month, Date, species) %>% # can add in regions
+#   dplyr::summarise(avg_smoke_conc = mean(avg_smoke_conc, na.rm = TRUE),
+#                    avg_nonsmoke_conc = mean(avg_nonsmoke_conc, na.rm = TRUE),
+#                    avg_tot_conc = mean(avg_tot_conc, na.rm = TRUE)) %>%
+#   ungroup() 
+#   
 
