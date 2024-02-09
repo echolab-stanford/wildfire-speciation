@@ -5,7 +5,7 @@
 # loadd(c(clean_PMspec_df, parameter_categories, pm_pal), cache = drake::drake_cache(".drake"))
 
 # function to plot PM data
-plot_raw_PM_data <- function(clean_PMspec_df, parameter_categories, pm_pal) {
+plot_monthly_mean_raw_PM_data <- function(clean_PMspec_df, parameter_categories, pm_pal) {
   
   # set up dataframe with species+date
   df <- clean_PMspec_df %>% 
@@ -26,12 +26,11 @@ pm25 <- df %>%
   group_by(year, month, species) %>%
   dplyr::summarise(avg_mon_conc = mean(avg_site_mon_conc, na.rm = TRUE)) %>%
   ungroup()  %>% 
-  
-  # group_by(year, month, species) %>% 
-  # dplyr::summarise(avg_mon_conc = mean(conc, na.rm = TRUE)) %>% 
-  # ungroup() %>% 
-  mutate(species = ifelse(species == 'smokePM', "Smoke PM2.5", "Total PM2.5")) %>% 
-  mutate(species = fct_relevel(species, c( "Total PM2.5", "Smoke PM2.5"))) %>% 
+  group_by(year, month, species) %>%
+  dplyr::summarise(avg_mon_conc = mean(avg_mon_conc, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(species = ifelse(species == 'smokePM', "Wildfire smoke PM2.5", "Total PM2.5")) %>% 
+  mutate(species = fct_relevel(species, c( "Total PM2.5", "Wildfire smoke PM2.5"))) %>% 
   mutate(mon_yr = as.Date(paste0(year, "-", month, "-", "01"), format = "%Y-%m-%d")) 
 
 
@@ -70,9 +69,9 @@ avg_mon_PM_plot <- ggplot(pm25) +
 avg_mon_PM_plot
 
 ggsave(
-  filename = 'Fig1B_avg_monthlyPM.pdf',
+  filename = 'Fig1B_avg_monthlyPM_raw.pdf',
   plot = avg_mon_PM_plot,
-  path = file.path(wip_gdrive_fp, 'figures/Fig1'),
+  path = file.path(results_fp, 'figures/Fig1'),
   scale = 1,
   width = 8,
   height = 6,

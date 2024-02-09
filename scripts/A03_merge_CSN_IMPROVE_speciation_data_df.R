@@ -2,17 +2,16 @@
 # Last Updated: Sept 27, 2023
 # Description: Binds together the CSN and IMPROVE speciation data - does some cleaning/flagging of data
 
-# loadd(c(raw_CSN_spec_df, raw_IMPROVE_spec_df), cache =  drake::drake_cache("scripts/.drake"))
-# us_shp = st_read(file.path(data_gdrive_fp, 'boundaries/gadm/gadm41_USA_shp/gadm41_USA_1.shp')) %>% 
-#   filter(!NAME_1 %in% c('Alaska', 'Hawaii'))
-
+# loadd(c(us_shp, raw_CSN_spec_df, raw_IMPROVE_spec_df), cache =  drake::drake_cache(".drake"))
 
 
 # FUNCTION
 merge_CSN_IMPROVE_speciation_data <- function(raw_CSN_spec_df, raw_IMPROVE_spec_df, us_shp) {
   
   all_raw_speciation_df <- bind_rows(raw_CSN_spec_df, 
-                                     raw_IMPROVE_spec_df)
+                                     raw_IMPROVE_spec_df) %>% 
+    # drop vars that are only in one monitoring network
+    dplyr::select(-c(N2, ammNO3, ammSO4))
   
   # TRANSFORM SITE COORDS TO SAME EPSG (PROJECTION)
   # list all the unique EPSGs
@@ -52,9 +51,9 @@ merge_CSN_IMPROVE_speciation_data <- function(raw_CSN_spec_df, raw_IMPROVE_spec_
    filter(!is.na(state_name)) %>% 
    st_drop_geometry() %>% 
    dplyr::select(Dataset, state_name, long = 'Longitude', lat= 'Latitude', 
-                 epsg, site_id, Date, units, AQSCode, SiteCode, MF, RCFM, AL, AS, BR,
-                 CA, CHL, CL, CR, CU, EC, FE, K, MG, MN, `NA`, NI, NO3, N2, OC,
-                 P, PB, RB, S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR, ammNO3, ammSO4) %>% 
+                 epsg, site_id, Date, units, AQSCode, MF, RCFM, AL, AS, BR,
+                 CA, CHL, CL, CR, CU, EC, FE, K, MG, MN, `NA`, NI, NO3, OC,
+                 P, PB, RB, S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR) %>% 
    distinct()
 
   # quick check of the map to make sure things look okay
