@@ -3,8 +3,8 @@
 # Description: merge speciation data with plume data, basic cleaning
 
 # loadd(CONUS_spec_df, cache = drake_cache)
-# pm_fp = file.path(wip_gdrive_fp, 'intermediate/smokePM_predictions_20060101-20230630.rds')
-# grid_fp = file.path(wip_gdrive_fp, 'intermediate/10km_grid_wgs84.shp')
+# pm_fp = file.path(data_fp, 'intermediate/smokePM_predictions_20060101-20230630.rds')
+# grid_fp = file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')
 
 join_speciation_w_gridded_smokePM <- function(CONUS_spec_df, pm_fp, grid_fp) {
 
@@ -29,8 +29,12 @@ join_speciation_w_gridded_smokePM <- function(CONUS_spec_df, pm_fp, grid_fp) {
   
 
   # pull id cells that intersect with the monitoring sites
-  points$grid_id_10km <- apply(st_intersects(grid_10km, points, sparse = FALSE), 2, 
-                               function(col) {grid_10km[which(col), ]$ID})
+  points$grid_id_10km <- apply(
+    st_intersects(grid_10km, points, sparse = FALSE), 2, 
+                               function(col) {
+                                 grid_10km[which(col), ]$ID
+                                 }
+                               )
   
 
   # Add grid_id_10km to the speciation df, join the smoke PM data by grid cell
@@ -46,7 +50,7 @@ join_speciation_w_gridded_smokePM <- function(CONUS_spec_df, pm_fp, grid_fp) {
     # Replace NA values (non-smoke days) to 0 (no smoke detected)
     mutate(smokePM2.5 = ifelse(is.na(smokePM_pred), 0, smokePM_pred)) %>% 
     # drop extra vars
-    dplyr::select(-c(AQSCode, geometry, grid_id_10km, SiteCode, smokePM_pred)) %>% 
+    dplyr::select(-c(AQSCode, geometry, grid_id_10km, smokePM_pred)) %>% 
     distinct()
   
   

@@ -16,14 +16,19 @@ final_speciation_cleaning_pre_analysis <- function(spec_w_smoke_pm_df) {
     mutate_if(is.numeric, ~ifelse(. == -999.00000, NA, .)) %>%
     # drop a row if concentrations for all chemicals are NA
     filter_at(vars(MF, RCFM, smokePM2.5, AL, AS, BR, CA, CHL, CL, CR, CU,
-                    EC, FE, K, MG, MN, `NA`, NI, NO3, N2, OC, P, PB,
+                    EC, FE, K, MG, MN, `NA`, NI, NO3, OC, P, PB,
                     RB, S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR),
               any_vars(!is.na(.))) %>%
-    # change any negative value in the data to NA
+    # # change any negative value in the data to NA
     mutate_at(vars(MF, RCFM, smokePM2.5, AL, AS, BR, CA, CHL, CL, CR, CU,
-                   EC, FE, K, MG, MN, `NA`, NI, NO3, N2, OC, P, PB,
+                   EC, FE, K, MG, MN, `NA`, NI, NO3, OC, P, PB,
                    RB, S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR),
               ~ifelse(. < 0, NA, .)) %>%
+    # change any 0 value in the data to NA, except for smoke data
+    mutate_at(vars(AL, AS, BR, CA, CHL, CL, CR, CU,
+                   EC, FE, K, MG, MN, `NA`, NI, NO3, OC, P, PB,
+                   RB, S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR),
+              ~ifelse(. == 0, NA, .)) %>%
     mutate(year = year(Date),
            month = month(Date),
            doy = yday(Date)) %>% 
@@ -64,7 +69,7 @@ final_speciation_cleaning_pre_analysis <- function(spec_w_smoke_pm_df) {
     # now drop if all speciation vars are NA for a row
     # drop a row if concentrations for all chemicals are NA
     filter_at(vars(AL, AS, BR, CA, CHL, CL, CR, CU,
-                   EC, FE, K, MG, MN, `NA`, NI, NO3, N2, OC, P, PB,
+                   EC, FE, K, MG, MN, `NA`, NI, NO3, OC, P, PB,
                    RB, S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR),
               any_vars(!is.na(.))) %>% 
     # calculate station smoke and non smoke using total PM var (PM2.5)
@@ -80,48 +85,12 @@ final_speciation_cleaning_pre_analysis <- function(spec_w_smoke_pm_df) {
                   duration, st_date, end_date, monitor_month, Date, site_id, smoke_day, 
                   MF_adj, RCFM_adj, smokePM = 'smokePM2.5', nonsmokePM_MF, nonsmokePM_RCFM,
                   AL, AS, BR, CA, CHL, CL, CR, CU,
-                  EC, FE, K, MG, MN, `NA`, NI, NO3, N2, OC, P, PB,
+                  EC, FE, K, MG, MN, `NA`, NI, NO3, OC, P, PB,
                   RB, S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR, units, 
                   long, lat, epsg, MF, RCFM)
   
   return(cleaned_spec_df)       
 } # end function
 
-
-# OLD CODE
-# station data was calculated using old MF col, need to update so commenting out code
-# stationPM_fp = file.path(wip_gdrive_fp, 'intermediate/pm_plume_speciation_at_sites_monitorPM.csv') 
-
-# # read in calculated station non smoke and smoke data from Ayako
-# # this calculated station data will serve as a check
-# station_calc_df <- read.csv(stationPM_fp) %>% 
-#   dplyr::select(SiteCode, Date, smokePM_MF) %>% 
-#   group_by(SiteCode, Date) %>% 
-#   dplyr::summarise(station_calc_smokePM = mean(smokePM_MF, na.rm = TRUE)) %>% 
-#   ungroup() %>% 
-#   distinct() %>% 
-#   mutate(Date = as.Date(Date, format = '%Y-%m-%d'))
-
-# set up regression dataframe
-# adj_pm_spec_df <- clean_pm_spec_df %>% 
-#   left_join(station_calc_df, by = c('SiteCode', 'Date')) %>% 
-#   
-# station_non_smokePM = ifelse(!is.na(PM2.5), PM2.5 - station_calc_smokePM, NA))  
-
-# mutate(NH4 = ifelse(!is.na(ammNO3) & !is.na(ammSO4),
-#   ((18/(18+62)*ammNO3)) + (18/((18+96)*ammSO4)), 
-#   NA)) %>%
-# # calculate metals category
-# mutate(tot_metals = AL + AS + CA + CR + CU + FE + PB + NI + MG + 
-#          MN + `NA` + TI + K + RB + SR + V + ZN + ZR) %>% # dropping MO bc lots of mis
-
-# calculate fractions
-# mutate(OC_frac = ifelse(MF != 0, OC/MF, NA),
-#        EC_frac = ifelse(MF != 0, EC/MF, NA), 
-#        NO3_frac = ifelse(MF != 0, NO3/MF, NA), 
-#        dust_frac = ifelse(MF != 0, SOIL/MF, NA), 
-#        SO4_frac = ifelse(MF != 0, SO4/MF, NA), 
-#        NH4_frac = ifelse(MF != 0, NH4/MF, NA), 
-#        metals_frac = ifelse(MF != 0, tot_metals/MF, NA)) %>%
 
   
