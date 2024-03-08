@@ -45,7 +45,7 @@ run_pixel_regression_and_plot_5yr_maps <- function(clean_PMspec_df, parameter_ca
   reg_df <- clean_PMspec_df %>% 
     dplyr::select(Dataset, year, month, monitor_month, Date,
                     site_id, MF_adj, smokePM, nonsmokePM_MF,
-                    AS, PB, long, lat) %>% 
+                    AS, PB, NI, long, lat) %>% 
     left_join(sites_w_grid_cells,
               by = c("Dataset", "site_id")) 
   
@@ -63,7 +63,7 @@ run_pixel_regression_and_plot_5yr_maps <- function(clean_PMspec_df, parameter_ca
   # RUN REGRESSION FOR SPECIES
   # -----------------------------------------------------------------------------
   # lat long regression model-
-  latlong_model = feols(c(AS, PB) ~ smokePM + smokePM*lat + smokePM*long +  smokePM*long*lat |
+  latlong_model = feols(c(AS, PB, NI) ~ smokePM + smokePM*lat + smokePM*long +  smokePM*long*lat |
                             monitor_month + year,
                           data = reg_df,
                           cluster = 'site_id')
@@ -128,15 +128,17 @@ run_pixel_regression_and_plot_5yr_maps <- function(clean_PMspec_df, parameter_ca
     #   mutate(ratio = (B_smokePM + B_smokePM_lat*lat_grid + B_smokePM_long*long_grid + B_smokePM_lat_long*long_grid*lat_grid))
     # ------------------------------------------------------------------------
       # summarize across sample periods to get avg exposure for five year periods in each grid cell
-      sample_avg_predictions <- current_preds_df %>%
+    sample_avg_predictions <- current_preds_df %>%
+      mutate(across(where(is.numeric), ~replace(., . < 0, NA))) %>% 
         group_by(grid_id_10km, species, long_grid, lat_grid, samp_period) %>%
         dplyr::summarise(avg_grid_conc = mean(pred_grid_conc, na.rm = TRUE)) %>%
-        ungroup() 
+        ungroup() %>% 
+      filter(samp_period != '2011-2015')
     
     rm(current_preds_df) # drop to save memory
-     
+    
+    # PLOT!!!!!!!!!!!!!!!!
     if (current_species == 'PB') {
-      # PLOT!!!!!!!!!!!!!!!!
       current_pred_map <- ggplot() +
         geom_sf(data = sample_avg_predictions %>%
                   left_join(grid_10km %>% 
@@ -164,38 +166,6 @@ run_pixel_regression_and_plot_5yr_maps <- function(clean_PMspec_df, parameter_ca
         guides(fill = 'none')
       # Specify the order for the legend
       # current_pred_map
-      
-    } else {
-      current_pred_map <- ggplot() +
-        geom_sf(data = sample_avg_predictions %>%
-                  left_join(grid_10km %>% 
-                              dplyr::select(grid_id_10km = 'ID', geometry), 
-                            by ='grid_id_10km') %>% 
-                  st_as_sf(), 
-                aes(color = avg_grid_conc, 
-                    fill = avg_grid_conc)) +  
-        scale_colour_viridis_c(option = "magma", direction = -1) +
-        scale_fill_viridis_c(option = "magma", direction = -1) +
-        facet_wrap(~samp_period) +
-        theme_minimal() +  # Apply a minimal theme
-        theme(
-          panel.grid.major = element_blank(),  # Remove major grid lines
-          panel.grid.minor = element_blank(),  # Remove minor grid lines
-          axis.text = element_blank(),  # Remove axis labels
-          axis.title = element_text(),  # Remove axis titles
-          legend.title = element_text(),
-          plot.title = element_text(face = "bold"),
-          legend.key.width = unit(.4, "cm"),  # Set the legend key width
-          legend.key.height = unit(.4, "cm")  # Set the legend key height
-        ) +
-        labs(title = paste0(current_species),
-             color = paste0('Concentration (ug/m3)')) +
-        guides(fill = 'none')
-      
-      
-    }
-      
-      # output each map
       ggsave(
         filename = paste0('Fig5A_continuous_gridded_predictions', current_species, '_conc.png'),
         plot = current_pred_map,
@@ -212,6 +182,106 @@ run_pixel_regression_and_plot_5yr_maps <- function(clean_PMspec_df, parameter_ca
         width = 12,
         height = 8,
         dpi = 320)
+      
+    } 
+    
+    # change color scale based on 
+    if (current_species == 'AS') {
+      current_pred_map <- ggplot() +
+        geom_sf(data = sample_avg_predictions %>%
+                  left_join(grid_10km %>% 
+                              dplyr::select(grid_id_10km = 'ID', geometry), 
+                            by ='grid_id_10km') %>% 
+                  st_as_sf(), 
+                aes(color = avg_grid_conc, 
+                    fill = avg_grid_conc)) +  
+        # scale_colour_viridis_c(option = "magma", direction = -1) +
+        # scale_fill_viridis_c(option = "magma", direction = -1) +
+        scale_color_continuous_sequential(palette = "ag_GrnYl", rev = T) +
+        scale_fill_continuous_sequential(palette = "ag_GrnYl", rev = T) +
+        facet_wrap(~samp_period) +
+        theme_minimal() +  # Apply a minimal theme
+        theme(
+          panel.grid.major = element_blank(),  # Remove major grid lines
+          panel.grid.minor = element_blank(),  # Remove minor grid lines
+          axis.text = element_blank(),  # Remove axis labels
+          axis.title = element_text(),  # Remove axis titles
+          legend.title = element_text(),
+          plot.title = element_text(face = "bold"),
+          legend.key.width = unit(.4, "cm"),  # Set the legend key width
+          legend.key.height = unit(.4, "cm")  # Set the legend key height
+        ) +
+        labs(title = paste0(current_species),
+             color = paste0('Concentration (ug/m3)')) +
+        guides(fill = 'none')
+      current_pred_map
+      
+      ggsave(
+        filename = paste0('Fig5A_continuous_gridded_predictions', current_species, '_conc.png'),
+        plot = current_pred_map,
+        path = file.path(results_fp, 'figures/Fig5'),
+        scale = 1,
+        width = 12,
+        height = 8,
+        dpi = 320)
+      ggsave(
+        filename = paste0('Fig5A_continuous_gridded_predictions', current_species, '_conc.pdf'),
+        plot = current_pred_map,
+        path = file.path(results_fp, 'figures/Fig5'),
+        scale = 1,
+        width = 12,
+        height = 8,
+        dpi = 320)
+      
+    }
+    
+    if (current_species == 'NI') {
+      current_pred_map <- ggplot() +
+        geom_sf(data = sample_avg_predictions %>%
+                  left_join(grid_10km %>% 
+                              dplyr::select(grid_id_10km = 'ID', geometry), 
+                            by ='grid_id_10km') %>% 
+                  st_as_sf(), 
+                aes(color = avg_grid_conc, 
+                    fill = avg_grid_conc)) +  
+        scale_colour_viridis_c(option = "magma", direction = -1) +
+        scale_fill_viridis_c(option = "magma", direction = -1) +
+        # scale_color_continuous_sequential(palette = "YlOrRd", rev = T) +
+        # scale_fill_continuous_sequential(palette = "YlOrRd", rev = T) +
+        facet_wrap(~samp_period) +
+        theme_minimal() +  # Apply a minimal theme
+        theme(
+          panel.grid.major = element_blank(),  # Remove major grid lines
+          panel.grid.minor = element_blank(),  # Remove minor grid lines
+          axis.text = element_blank(),  # Remove axis labels
+          axis.title = element_text(),  # Remove axis titles
+          legend.title = element_text(),
+          plot.title = element_text(face = "bold"),
+          legend.key.width = unit(.4, "cm"),  # Set the legend key width
+          legend.key.height = unit(.4, "cm")  # Set the legend key height
+        ) +
+        labs(title = paste0(current_species),
+             color = paste0('Concentration (ug/m3)')) +
+        guides(fill = 'none')
+      current_pred_map
+      
+      ggsave(
+        filename = paste0('Fig5A_continuous_gridded_predictions', current_species, '_conc.png'),
+        plot = current_pred_map,
+        path = file.path(results_fp, 'figures/Fig5'),
+        scale = 1,
+        width = 12,
+        height = 8,
+        dpi = 320)
+      ggsave(
+        filename = paste0('Fig5A_continuous_gridded_predictions', current_species, '_conc.pdf'),
+        plot = current_pred_map,
+        path = file.path(results_fp, 'figures/Fig5'),
+        scale = 1,
+        width = 12,
+        height = 8,
+        dpi = 320)
+    }
       
       sample_avg_predictions
       # End the parallel session

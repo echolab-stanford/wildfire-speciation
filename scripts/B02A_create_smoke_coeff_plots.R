@@ -38,6 +38,14 @@ full_sampPM_regMF = feols(c(AL,AS,BR, CA, CL, CHL,CR, CU, EC, FE,
                             S,  SE, SI, SO4, SR, TI, V,  ZN)
                    ~ smokePM + nonsmokePM_MF | 
                      monitor_month + year, reg_df, cluster = 'site_id') 
+# 
+# full_sampPM_regMF = feols(c(AL,AS,BR, CA, CL, CHL,CR, CU, EC, FE, 
+#                             K, MG,MN, `NA`, NI, NO3, OC, P,  PB, RB,
+#                             S,  SE, SI, SO4, SR, TI, V,  ZN)
+#                           ~ smokePM + nonsmokePM_MF | 
+#                             site_id^month + year, 
+#                           reg_df, cluster = 'site_id') 
+
 
 # etable(full_sampPM_regMF) # look at regression results
 

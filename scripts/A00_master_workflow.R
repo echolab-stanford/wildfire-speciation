@@ -8,7 +8,7 @@
 # source the functions and libraries
 source(here::here("0_functions.R"))
 source(here::here("0_packages.R"))
-data_fp = '/Users/ekrasovich/Library/CloudStorage/Dropbox-BurkeLab/data/wildfire_speciation'
+data_fp = '/Users/ekrasovich/Library/CloudStorage/Dropbox-BurkeLab/projects/ws_project/data'
 gdrive_data_fp = '/Users/ekrasovich/Library/CloudStorage/GoogleDrive-emmars@stanford.edu/Shared drives/echolab:data'
 gee_data_fp = '/Users/ekrasovich/My Drive/Research/G_ECHOLab/GEE_Echolab_Export'
 results_fp = '/Users/ekrasovich/Library/CloudStorage/Dropbox-BurkeLab/projects/ws_project'
@@ -202,15 +202,15 @@ wildfire_plan <- drake_plan(
   # FIGURE 4
   # --------------------------------------------------------------------------------
   # 4a) create data using regional model coeffs + predicting attributable fraction in smoke 
-  pred_regional_attributable_preds = target(
-    create_attributable_frac_w_regional_coeffs(
-      grid_fp = file_in(!!file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')),
-      clean_PMspec_df, parameter_categories, pm_pal, full_samplePM_df, regionalPMcoeffs_normalized)),
-  
-  # 4b) create plot attributable fraction due to smoke plot
-  attr_frac_df = target(
-    plot_attributable_frac_trends(pred_regional_attributable_preds, spec_pal)),
-  
+  # pred_regional_attributable_preds = target(
+  #   create_attributable_frac_w_regional_coeffs(
+  #     grid_fp = file_in(!!file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')),
+  #     clean_PMspec_df, parameter_categories, pm_pal, full_samplePM_df, regionalPMcoeffs_normalized)),
+  # 
+  # # 4b) create plot attributable fraction due to smoke plot
+  # attr_frac_df = target(
+  #   plot_attributable_frac_trends(pred_regional_attributable_preds, spec_pal)),
+  # 
 
   # --------------------------------------------------------------------------------
   # FIGURE 5 
@@ -227,9 +227,17 @@ wildfire_plan <- drake_plan(
     run_pixel_regression_and_plot_5yr_maps(
       clean_PMspec_df,
       parameter_categories,
-      grid_fp = file_in(!!file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')),
-      full_samplePM_df, current_species = 'AS')),
+  grid_fp = file_in(!!file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')),
+  full_samplePM_df, current_species = 'AS')),
 
+  NI_avg_period_gridded_preds_df = target(
+    run_pixel_regression_and_plot_5yr_maps(
+      clean_PMspec_df,
+      parameter_categories,
+      grid_fp = file_in(!!file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')),
+      full_samplePM_df, current_species = 'NI')),
+
+  
   #5b) calculate population excess cancer cases
   # annual_excess_cases = target(
   #   calculate_pop_exposure(
