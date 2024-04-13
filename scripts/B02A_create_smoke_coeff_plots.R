@@ -36,27 +36,19 @@ spec_ns_samp_avgs_df <- reg_df %>%
 full_sampPM_regMF = feols(c(AL,AS,BR, CA, CL, CHL,CR, CU, EC, FE, 
                             K, MG,MN, `NA`, NI, NO3, OC, P,  PB, RB,
                             S,  SE, SI, SO4, SR, TI, V,  ZN)
-                   ~ smokePM + nonsmokePM_MF | 
-                     monitor_month + year, reg_df, cluster = 'site_id') 
-# 
-# full_sampPM_regMF = feols(c(AL,AS,BR, CA, CL, CHL,CR, CU, EC, FE, 
-#                             K, MG,MN, `NA`, NI, NO3, OC, P,  PB, RB,
-#                             S,  SE, SI, SO4, SR, TI, V,  ZN)
-#                           ~ smokePM + nonsmokePM_MF | 
-#                             site_id^month + year, 
-#                           reg_df, cluster = 'site_id') 
-
+                          ~ smokePM + nonsmokePM_MF | 
+                            monitor_month + year, reg_df, cluster = 'site_id') 
 
 # etable(full_sampPM_regMF) # look at regression results
 
 ## calculate 95 CI%
 CIs <- confint(
-    full_sampPM_regMF) %>% 
-      rename(species = 'lhs',
-             pm_type = 'coefficient',
-             CI25 = '2.5 %',
-             CI975 = '97.5 %') %>% 
-      mutate(measure = 'MF') %>% 
+  full_sampPM_regMF) %>% 
+  rename(species = 'lhs',
+         pm_type = 'coefficient',
+         CI25 = '2.5 %',
+         CI975 = '97.5 %') %>% 
+  mutate(measure = 'MF') %>% 
   dplyr::select(-id)
 
 # get coefficients and prepare for plotting
@@ -65,7 +57,7 @@ full_sampPM_coeffsMF <- coeftable(full_sampPM_regMF) %>%
          se = 'Std. Error',
          species = 'lhs',
          pm_type = 'coefficient') %>% 
-  mutate(pval = round(pval, digits = 3)) %>% 
+  mutate(pval = round(pval, digits = 4)) %>% 
   # get pvalues
   mutate(sig = ifelse(pval > .05, 'non-significant', 'significant')) %>% 
   dplyr::select(-id)  %>% 
@@ -86,21 +78,25 @@ full_samp_PMcoeffs_normalized <- full_sampPM_coeffsMF %>%
          norm_CI25 = CI25/avg_nonsmoke_spec_conc,
          norm_CI975 = CI975/avg_nonsmoke_spec_conc) %>% 
   filter(pm_type == 'smokePM')
-  
+
+tab_df <- full_samp_PMcoeffs_normalized %>% 
+  dplyr::select(species = 'species_name', est = 'Estimate', se, tval = `t value`, pval, 
+                baseline_NS_conc = 'avg_nonsmoke_spec_conc', norm_est, norm_CI25, norm_CI975)
+# xtable(tab_df)
 
 # plot coefficients for speciation at the avg monitor which tells us how much 
 # of a chemical species is in 1 ug/m3 of smoke PM2.5 and nonsmoke PM2.5
 # --------------------------------------------------------------------------------
 # plot percent change for all species
 # --------------------------------------------------------------------------------
-    pct_change_samp_reg_plot <- ggplot(full_samp_PMcoeffs_normalized, 
-                             aes(x = species_long,
-                                 y = 100*norm_est, 
-                                 color=species_type, 
-                                 )) +
+pct_change_samp_reg_plot <- ggplot(full_samp_PMcoeffs_normalized, 
+                                   aes(x = species_long,
+                                       y = 100*norm_est, 
+                                       color=species_type, 
+                                   )) +
   geom_point(size=4, alpha = 0.6, stat = "identity") +
   geom_linerange(aes(ymin = (100*norm_CI25), 
-                    ymax = (100*norm_CI975)), stat = "identity") +
+                     ymax = (100*norm_CI975)), stat = "identity") +
   scale_x_discrete(limits = c(
     # "Organics"
     "Organic Carbon (OC)", "Elemental Carbon (EC)",
@@ -118,7 +114,7 @@ full_samp_PMcoeffs_normalized <- full_sampPM_coeffsMF %>%
     "Potassium (K)", "Rubidium (Rb)", "Sodium (Na)",
     # "Alkaline-earth metals"
     "Strontium (Sr)","Calcium (Ca)",  "Magnesium (Mg)" 
-)) +
+  )) +
   scale_color_manual(values= spec_pal) +
   coord_flip() +
   geom_hline(yintercept = 0, linetype = "dashed", color = 'grey') +
@@ -152,14 +148,14 @@ ggsave(
 # SMOKE ONLY LOG SCALE
 # -------------------------------------------------------------------------------
 LOGall_species_smoke_plot <- ggplot(full_sampPM_coeffsMF %>% 
-                                   filter(pm_type == 'smokePM'), 
-                                 aes(x = species_long,
-                                     y = Estimate, 
-                                     color= species_type)) +
+                                      filter(pm_type == 'smokePM'), 
+                                    aes(x = species_long,
+                                        y = Estimate, 
+                                        color= species_type)) +
   geom_point(size=4, alpha = 0.6, stat = "identity") +
   geom_linerange(aes(ymin = CI25, 
                      ymax = CI975), stat = "identity") +
- # scale_y_log10() +
+  # scale_y_log10() +
   scale_x_discrete(limits = c(
     # "Organics"
     "Organic Carbon (OC)", "Elemental Carbon (EC)",
@@ -180,7 +176,7 @@ LOGall_species_smoke_plot <- ggplot(full_sampPM_coeffsMF %>%
   )) +
   scale_color_manual(values = spec_pal)+
   geom_hline(yintercept = 0, linetype = "dashed", color = 'grey') + # 0.000006486634
-
+  
   scale_y_continuous(trans='log10', 
                      limits = c(0.000001,.5), 
                      breaks=c(0.000001, 0.00001, .0001, .001,  0.01, 0.1,  0.5),
@@ -190,7 +186,7 @@ LOGall_species_smoke_plot <- ggplot(full_sampPM_coeffsMF %>%
        color = 'Species Category', 
        title = expression(paste("Variation in how wildfire smoke ", "PM"["2.5"], " effects species' concentrations"))) + 
   theme_light() +
- coord_flip() +
+  coord_flip() +
   theme(panel.border = element_blank(), 
         panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         axis.line = element_line(colour = "black"),
@@ -214,4 +210,5 @@ ggsave(
 return(full_samp_PMcoeffs_normalized)
 
 }
+
 

@@ -12,23 +12,19 @@ final_speciation_cleaning_pre_analysis <- function(spec_w_smoke_pm_df) {
     # change inf to NA + NaNs to NAs
     mutate_if(is.numeric, ~ifelse(. == Inf, NA, .)) %>% 
     mutate_if(is.numeric, ~ifelse(is.nan(.), NA, .)) %>% 
-    mutate_if(is.numeric, ~ifelse(. == -999, NA, .)) %>%
-    mutate_if(is.numeric, ~ifelse(. == -999.00000, NA, .)) %>%
+    mutate_at(vars(MF, RCFM, smokePM2.5, AL, AS, BR, CA, CHL, CL, CR, CU,
+                   EC, FE, K, MG, MN, `NA`, NI, NO3, OC, P, PB,
+                   RB, S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR), ~ifelse(. < -100, NA, .)) %>%
     # drop a row if concentrations for all chemicals are NA
     filter_at(vars(MF, RCFM, smokePM2.5, AL, AS, BR, CA, CHL, CL, CR, CU,
                     EC, FE, K, MG, MN, `NA`, NI, NO3, OC, P, PB,
                     RB, S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR),
               any_vars(!is.na(.))) %>%
-    # # change any negative value in the data to NA
-    mutate_at(vars(MF, RCFM, smokePM2.5, AL, AS, BR, CA, CHL, CL, CR, CU,
-                   EC, FE, K, MG, MN, `NA`, NI, NO3, OC, P, PB,
-                   RB, S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR),
-              ~ifelse(. < 0, NA, .)) %>%
     # change any 0 value in the data to NA, except for smoke data
-    mutate_at(vars(AL, AS, BR, CA, CHL, CL, CR, CU,
-                   EC, FE, K, MG, MN, `NA`, NI, NO3, OC, P, PB,
-                   RB, S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR),
-              ~ifelse(. == 0, NA, .)) %>%
+    # mutate_at(vars(AL, AS, BR, CA, CHL, CL, CR, CU,
+    #                EC, FE, K, MG, MN, `NA`, NI, NO3, OC, P, PB,
+    #                RB, S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR),
+    #           ~ifelse(. == 0, NA, .)) %>%
     mutate(year = year(Date),
            month = month(Date),
            doy = yday(Date)) %>% 
@@ -67,11 +63,11 @@ final_speciation_cleaning_pre_analysis <- function(spec_w_smoke_pm_df) {
     mutate(MF_adj = ifelse(is.na(MF), smokePM2.5, MF),
            RCFM_adj = ifelse(is.na(RCFM), smokePM2.5, RCFM)) %>% 
     # now drop if all speciation vars are NA for a row
-    # drop a row if concentrations for all chemicals are NA
-    filter_at(vars(AL, AS, BR, CA, CHL, CL, CR, CU,
-                   EC, FE, K, MG, MN, `NA`, NI, NO3, OC, P, PB,
-                   RB, S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR),
-              any_vars(!is.na(.))) %>% 
+    # # drop a row if concentrations for all chemicals are NA
+    # filter_at(vars(AL, AS, BR, CA, CHL, CL, CR, CU,
+    #                EC, FE, K, MG, MN, `NA`, NI, NO3, OC, P, PB,
+    #                RB, S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR),
+    #           any_vars(!is.na(.))) %>% 
     # calculate station smoke and non smoke using total PM var (PM2.5)
     mutate(nonsmokePM_MF = MF_adj - smokePM2.5,
            nonsmokePM_RCFM = RCFM_adj - smokePM2.5) %>% 

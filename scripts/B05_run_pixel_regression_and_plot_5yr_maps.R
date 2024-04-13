@@ -129,11 +129,12 @@ run_pixel_regression_and_plot_5yr_maps <- function(clean_PMspec_df, parameter_ca
     # ------------------------------------------------------------------------
       # summarize across sample periods to get avg exposure for five year periods in each grid cell
     sample_avg_predictions <- current_preds_df %>%
+      filter(samp_period != '2011-2015') %>% 
       mutate(across(where(is.numeric), ~replace(., . < 0, NA))) %>% 
         group_by(grid_id_10km, species, long_grid, lat_grid, samp_period) %>%
         dplyr::summarise(avg_grid_conc = mean(pred_grid_conc, na.rm = TRUE)) %>%
-        ungroup() %>% 
-      filter(samp_period != '2011-2015')
+        ungroup() 
+      
     
     rm(current_preds_df) # drop to save memory
     
@@ -165,6 +166,7 @@ run_pixel_regression_and_plot_5yr_maps <- function(clean_PMspec_df, parameter_ca
              color = paste0('Concentration (ug/m3)')) +
         guides(fill = 'none')
       # Specify the order for the legend
+      
       # current_pred_map
       ggsave(
         filename = paste0('Fig5A_continuous_gridded_predictions', current_species, '_conc.png'),
@@ -195,8 +197,6 @@ run_pixel_regression_and_plot_5yr_maps <- function(clean_PMspec_df, parameter_ca
                   st_as_sf(), 
                 aes(color = avg_grid_conc, 
                     fill = avg_grid_conc)) +  
-        # scale_colour_viridis_c(option = "magma", direction = -1) +
-        # scale_fill_viridis_c(option = "magma", direction = -1) +
         scale_color_continuous_sequential(palette = "ag_GrnYl", rev = T) +
         scale_fill_continuous_sequential(palette = "ag_GrnYl", rev = T) +
         facet_wrap(~samp_period) +
@@ -246,8 +246,6 @@ run_pixel_regression_and_plot_5yr_maps <- function(clean_PMspec_df, parameter_ca
                     fill = avg_grid_conc)) +  
         scale_colour_viridis_c(option = "magma", direction = -1) +
         scale_fill_viridis_c(option = "magma", direction = -1) +
-        # scale_color_continuous_sequential(palette = "YlOrRd", rev = T) +
-        # scale_fill_continuous_sequential(palette = "YlOrRd", rev = T) +
         facet_wrap(~samp_period) +
         theme_minimal() +  # Apply a minimal theme
         theme(
