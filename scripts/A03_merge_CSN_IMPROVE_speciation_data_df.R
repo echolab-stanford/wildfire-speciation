@@ -11,7 +11,9 @@ merge_CSN_IMPROVE_speciation_data <- function(raw_CSN_spec_df, raw_IMPROVE_spec_
   all_raw_speciation_df <- bind_rows(raw_CSN_spec_df, 
                                      raw_IMPROVE_spec_df) %>% 
     # drop vars that are only in one monitoring network
-    dplyr::select(-c(N2, ammNO3, ammSO4))
+    dplyr::select(-c(N2, ammNO3, ammSO4)) # %>% 
+    # left_join(haps_spec_df %>% dplyr::select(-lat, -long, -units, -epsg), 
+    #           by = c('site_id', 'Date', 'st_name',  'Dataset'))
   
   # TRANSFORM SITE COORDS TO SAME EPSG (PROJECTION)
   # list all the unique EPSGs
@@ -42,26 +44,33 @@ merge_CSN_IMPROVE_speciation_data <- function(raw_CSN_spec_df, raw_IMPROVE_spec_
   # our datapoints with the US shapefile, any site that no longer has coordinates, drop
  CONUS_sites_df <- all_spec_transformed_df %>%
     distinct(site_id, Longitude, Latitude) %>%
-    st_as_sf(coords = c(x = 'Longitude', y = 'Latitude'), crs = 4326) %>% 
-   st_intersection(us_shp %>% dplyr::select(state_name = 'NAME_1'))
+    st_as_sf(coords = c(x = 'Longitude', 
+                        y = 'Latitude'), crs = 4326) %>% 
+   st_join(us_shp %>% 
+             st_transform(4326) %>% 
+             dplyr::select(state_name = 'NAME_1')) %>% 
+   filter(!is.na(state_name)) %>% 
+   mutate(Longitude = st_coordinates(.)[,1],
+          Latitude = st_coordinates(.)[,2]) %>% 
+   st_drop_geometry() %>% 
+   distinct()
   
  # now join
- CONUS_spec_df <- all_spec_transformed_df %>% 
-   left_join(CONUS_sites_df, by= 'site_id') %>% 
-   filter(!is.na(state_name)) %>% 
-   st_drop_geometry() %>% 
+ CONUS_spec_df <- CONUS_sites_df %>% 
+   left_join(all_spec_transformed_df %>% 
+               dplyr::select(-c(Longitude, Latitude)) %>% 
+   distinct(), by= 'site_id') %>% 
    dplyr::select(Dataset, state_name, long = 'Longitude', lat= 'Latitude', 
                  epsg, site_id, Date, units, AQSCode, MF, RCFM, AL, AS, BR,
                  CA, CHL, CL, CR, CU, EC, FE, K, MG, MN, `NA`, NI, NO3, OC,
-                 P, PB, RB, S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR) %>% 
-   distinct()
+                 P, PB, RB, S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR) 
 
   # quick check of the map to make sure things look okay
   # mapview(CONUS_spec_df %>%
   #           distinct(site_id, long, lat) %>%
   #           st_as_sf(coords = c(x = 'long', y = 'lat'), crs = 4326),
   #         legend = FALSE, cex = 3)
-  #  
+  
   
   return(CONUS_spec_df)
 }

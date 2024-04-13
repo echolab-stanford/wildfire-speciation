@@ -45,5 +45,10 @@ library(gridExtra)
 library(ggthemes)
 library(viridis)
 library(ggrepel)
+library(cowplot)
+library(pbmcapply)
+library(pbapply)
+library(xtable)
+library(ggtext) # element_markdown
 
 

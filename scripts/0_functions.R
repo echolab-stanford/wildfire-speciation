@@ -1,3 +1,6 @@
+# helper functions ----
+`%not_in%` <- purrr::negate(`%in%`)
+
 
 #add a function for adding alphas to colors	
 add.alpha <- function(col, alpha=1){

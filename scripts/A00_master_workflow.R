@@ -2,7 +2,7 @@
 # Created: October 29, 2022 | Last Updated: Jan 3, 2024
 # Description: Full workflow for reading in, cleaning, data for the wildfire speciation project.
 # This script will load all relevant libraries + functions that are necessary for the workflow,
-# and run rexagressions of interest.
+# and run regressions of interest.
 
 
 # source the functions and libraries
@@ -18,12 +18,14 @@ options(scipen = 999)
 
 
 # SOURCE FUNCTIONS:
-list.files(here::here(), full.names=T, pattern = '(^A|^B)') %>%
+list.files(here::here(), full.names=T, pattern = '(^A|^B|^C)') %>%
   str_subset("\\.R$") %>%
   str_subset('workflow', negate = TRUE) %>%
   str_subset('combine_speciation_w_CASno_and_RSLs', negate = TRUE) %>%
   str_subset('calculate_pop', negate = TRUE) %>%
-  #str_subset('plot_attributable_frac', negate = TRUE) %>%
+  str_subset('C02_CSN_V_improve_sensitivty', negate = TRUE) %>%
+  str_subset('CCcombine_gridded_predictions_w_toxicity_vals', negate = TRUE) %>%
+  str_subset('estimating_conc_response', negate = TRUE) %>%
 walk(source)
 
 
@@ -159,7 +161,7 @@ wildfire_plan <- drake_plan(
   avg_PM_monthly_mean = target(
     plot_monthly_mean_raw_PM_data(clean_PMspec_df, parameter_categories, pm_pal)),
   
-  # c) Figure 1C - create time series of monthyl chemical species averages
+  # c) Figure 1C - create time series of monthly chemical species averages
   avg_spec_monthly_mean = target(
     plot_monthly_mean_raw_all_specices(clean_PMspec_df, 
                                        parameter_categories, 
@@ -195,9 +197,28 @@ wildfire_plan <- drake_plan(
   # --------------------------------------------------------------------------------
   # FIGURE 3 - adapt jeff's code into this pipeline
   # --------------------------------------------------------------------------------
-  # 3a) Figure 3
- 
+  # 3a) Process fire + structures burned data
+  globfire_structure_joined_df = target(
+    processing_burned_structures_data(
+      globfire_fp = file_in(!!(file.path(data_fp, 'intermediate/globfire/globfire_na_final_area_2006-2020.shp'))),
+      mtbs_fp = file_in(!!(file.path(data_fp, 'intermediate/mtbs/mtbs_perims_DD.shp'))),
+      nifc_fp = file_in(!!(file.path(data_fp, "intermediate/fire_locations/WFIGS_-_Wildland_Fire_Locations_Full_History.csv"))),
+      damaged_struct_fp = file_in(!!(file.path(data_fp, 'clean/HE_Structures_Destroyed_2022.xlsx')))
+      )),
+    
+  # 3b) merge burned structures with speciation data and clean
+  burned_struc_smoke_spec_df = target(
+    merge_burned_structures_w_speciation(
+      globfire_structure_joined_df, clean_PMspec_sites_df, clean_PMspec_df,
+      grid_fp = file_in(!!(file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')))
+                        )),
   
+  # 3c) 
+  # boostrapped_CIs_df = target(
+  #   estimating_conc_response_2_burned_structures(
+  #     burned_struc_smoke_spec_df, 
+  #     parameter_categories)),
+
   # --------------------------------------------------------------------------------
   # FIGURE 4
   # --------------------------------------------------------------------------------
@@ -206,36 +227,36 @@ wildfire_plan <- drake_plan(
   #   create_attributable_frac_w_regional_coeffs(
   #     grid_fp = file_in(!!file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')),
   #     clean_PMspec_df, parameter_categories, pm_pal, full_samplePM_df, regionalPMcoeffs_normalized)),
-  # 
-  # # 4b) create plot attributable fraction due to smoke plot
-  # attr_frac_df = target(
-  #   plot_attributable_frac_trends(pred_regional_attributable_preds, spec_pal)),
-  # 
+
+  # 4b) create plot attributable fraction due to smoke plot
+  attr_frac_df = target(
+    plot_attributable_frac_trends(pred_regional_attributable_preds, spec_pal)),
+
 
   # --------------------------------------------------------------------------------
   # FIGURE 5 
   # -------------------------------------------------------------------------------
   # 5a) run pixel regression + plot the gridded concentrations for each sample period
-  PB_avg_period_gridded_preds_df = target(
-    run_pixel_regression_and_plot_5yr_maps(
-      clean_PMspec_df,
-      parameter_categories,
-      grid_fp = file_in(!!file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')),
-      full_samplePM_df, current_species = 'PB')),
+  # PB_avg_period_gridded_preds_df = target(
+  #   run_pixel_regression_and_plot_5yr_maps(
+  #     clean_PMspec_df,
+  #     parameter_categories,
+  #     grid_fp = file_in(!!file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')),
+  #     full_samplePM_df, current_species = 'PB')),
 
-  AS_avg_period_gridded_preds_df = target(
-    run_pixel_regression_and_plot_5yr_maps(
-      clean_PMspec_df,
-      parameter_categories,
-  grid_fp = file_in(!!file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')),
-  full_samplePM_df, current_species = 'AS')),
-
-  NI_avg_period_gridded_preds_df = target(
-    run_pixel_regression_and_plot_5yr_maps(
-      clean_PMspec_df,
-      parameter_categories,
-      grid_fp = file_in(!!file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')),
-      full_samplePM_df, current_species = 'NI')),
+  # AS_avg_period_gridded_preds_df = target(
+  #   run_pixel_regression_and_plot_5yr_maps(
+  #     clean_PMspec_df,
+  #     parameter_categories,
+  # grid_fp = file_in(!!file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')),
+  # full_samplePM_df, current_species = 'AS')),
+  # 
+  # NI_avg_period_gridded_preds_df = target(
+  #   run_pixel_regression_and_plot_5yr_maps(
+  #     clean_PMspec_df,
+  #     parameter_categories,
+  #     grid_fp = file_in(!!file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')),
+  #     full_samplePM_df, current_species = 'NI')),
 
   
   #5b) calculate population excess cancer cases
@@ -245,6 +266,18 @@ wildfire_plan <- drake_plan(
   #     grid_fp = file_in(!!file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')),
   #     tox_fp = file_in(!!file.path(data_fp, 'raw/RSL Table/oehha_ca_IURs.csv'))
   #     ))
+  
+  
+  # --------------------------------------------------------------------------------
+  # SUPPLEMENTARY FIGURES
+  # -------------------------------------------------------------------------------
+  # coeffs_robustness = target(
+  #   create_coeff_sensitivity_SI_figures(
+  #     clean_PMspec_df, 
+  #     parameter_categories, 
+  #     spec_pal))
+    
+    
   
 
 ) # end plan
