@@ -9,8 +9,8 @@ loadd(c(parameter_categories, spec_pal,
       cache = drake::drake_cache(".drake"))
 
 limits <- c(
-  "Lead (Pb)", 
-  "Copper (Cu)", 
+  # "Lead (Pb)", 
+  "Phosphorus (P)", 
   "Potassium (K)",
   "Elemental Carbon (EC)", "Organic Carbon (OC)")
  
@@ -20,7 +20,7 @@ limits <- c(
   # plot percent change for all species
   # --------------------------------------------------------------------------------
   pct_change_samp_reg_plot <- ggplot(full_samp_PMcoeffs_normalized %>% 
-                                       filter(species %in% c('EC', 'OC', 'K', 'PB', 'CU')), 
+                                       filter(species %in% c('EC', 'OC', 'K', 'P')), 
                                      aes(x = species_long,
                                          y = 100*norm_est, 
                                          color=species_type, 
@@ -28,14 +28,14 @@ limits <- c(
     geom_point(size=4, alpha = 0.6, stat = "identity") +
     geom_linerange(aes(ymin = (100*norm_CI25), 
                        ymax = (100*norm_CI975)), stat = "identity") +
-    scale_x_discrete(limits = limits) +
+    scale_x_discrete(limits = rev(limits)) +
      #spec_pal = c("#35274A", , "#E58601", "#E2D200", , "#0B775E","#CAB38C", )
     scale_color_manual(values= c("#B40F20","#E58601","#46ACC8", "#899DA4"),
                        name = "Species type") +
-    #coord_flip() +
+    coord_flip() +
     geom_hline(yintercept = 0, linetype = "dashed", color = 'grey') +
-    labs(y = expression(paste('% change relative to average nonsmoke day concentration')),
-         x = 'Species') +
+    labs(y = expression(paste('% change relative to average nonsmoke day concentration')))+
+         #x = 'Species') +
          #color = 'Species Category',
          #title = expression(paste("% change in concentration for 1 ug/", m^3, " increase in smoke ", "PM"["2.5"]))) + 
     theme_light() + 
@@ -51,15 +51,15 @@ limits <- c(
           legend.position = c(0.02, 0.98),  # Adjust the position of the legend
           legend.justification = c(0, 1)) +  # Adjust the justification of the legend) +
     geom_hline(yintercept = 0, linetype = "dashed", color = 'grey50') +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis text by 90 degrees
-    #guides(color = 'none')
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  # Rotate x-axis text by 90 degrees
+    guides(color = 'none')
   pct_change_samp_reg_plot
   
   # save file
   ggsave(
-    filename = 'Fig2_pct_change_PM_spec_smokeMF_3_chems.png',
+    filename = 'Pct_change_PM_P_K_OC_EC.png',
     plot = pct_change_samp_reg_plot,
-    path = file.path(results_fp, 'figures/presentations'),
+    path = file.path(results_fp, 'figures/Presentation Figs'),
     scale = 1,
     width = 8,
     height = 8,

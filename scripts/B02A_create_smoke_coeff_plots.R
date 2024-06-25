@@ -79,10 +79,6 @@ full_samp_PMcoeffs_normalized <- full_sampPM_coeffsMF %>%
          norm_CI975 = CI975/avg_nonsmoke_spec_conc) %>% 
   filter(pm_type == 'smokePM')
 
-tab_df <- full_samp_PMcoeffs_normalized %>% 
-  dplyr::select(species = 'species_name', est = 'Estimate', se, tval = `t value`, pval, 
-                baseline_NS_conc = 'avg_nonsmoke_spec_conc', norm_est, norm_CI25, norm_CI975)
-# xtable(tab_df)
 
 # plot coefficients for speciation at the avg monitor which tells us how much 
 # of a chemical species is in 1 ug/m3 of smoke PM2.5 and nonsmoke PM2.5
@@ -94,7 +90,7 @@ pct_change_samp_reg_plot <- ggplot(full_samp_PMcoeffs_normalized,
                                        y = 100*norm_est, 
                                        color=species_type, 
                                    )) +
-  geom_point(size=4, alpha = 0.6, stat = "identity") +
+  geom_point(size=3, alpha = 0.6, stat = "identity") +
   geom_linerange(aes(ymin = (100*norm_CI25), 
                      ymax = (100*norm_CI975)), stat = "identity") +
   scale_x_discrete(limits = c(
@@ -103,13 +99,13 @@ pct_change_samp_reg_plot <- ggplot(full_samp_PMcoeffs_normalized,
     # "Halogens"
     "Bromine (Br)", "Chlorine (Cl)", "Chloride (Chl)", 
     #  "Nonmetals"
-    "Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Phosphorus (P)", "Selenium (Se)", 
+    "Phosphorus (P)","Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Selenium (Se)", 
     # "Other metals"
     "Titanium (Ti)", "Aluminum (Al)", "Lead (Pb)",
     # "Metalloids"
     "Silicon (Si)", "Arsenic (As)",
     # "Transition metals"
-    "Zinc (Zn)", "Manganese (Mn)",  "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
+    "Manganese (Mn)", "Zinc (Zn)", "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
     # "Alkali metals"
     "Potassium (K)", "Rubidium (Rb)", "Sodium (Na)",
     # "Alkaline-earth metals"
@@ -144,6 +140,15 @@ ggsave(
   height = 10,
   dpi = 320) 
 
+ggsave(
+  filename = 'Fig2_pct_change_PM_spec_smokeMF_all_chems_raw.png',
+  plot = pct_change_samp_reg_plot,
+  path = file.path(results_fp, 'figures/Fig2'),
+  scale = 1,
+  width = 7,
+  height = 10,
+  dpi = 320) 
+
 # -------------------------------------------------------------------------------
 # SMOKE ONLY LOG SCALE
 # -------------------------------------------------------------------------------
@@ -152,7 +157,7 @@ LOGall_species_smoke_plot <- ggplot(full_sampPM_coeffsMF %>%
                                     aes(x = species_long,
                                         y = Estimate, 
                                         color= species_type)) +
-  geom_point(size=4, alpha = 0.6, stat = "identity") +
+  geom_point(size=3, alpha = 0.6, stat = "identity") +
   geom_linerange(aes(ymin = CI25, 
                      ymax = CI975), stat = "identity") +
   # scale_y_log10() +
@@ -162,13 +167,13 @@ LOGall_species_smoke_plot <- ggplot(full_sampPM_coeffsMF %>%
     # "Halogens"
     "Bromine (Br)", "Chlorine (Cl)", "Chloride (Chl)", 
     #  "Nonmetals"
-    "Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Phosphorus (P)", "Selenium (Se)", 
+    "Phosphorus (P)","Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Selenium (Se)", 
     # "Other metals"
     "Titanium (Ti)", "Aluminum (Al)", "Lead (Pb)",
     # "Metalloids"
     "Silicon (Si)", "Arsenic (As)",
     # "Transition metals"
-    "Zinc (Zn)", "Manganese (Mn)",  "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
+    "Manganese (Mn)", "Zinc (Zn)", "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
     # "Alkali metals"
     "Potassium (K)", "Rubidium (Rb)", "Sodium (Na)",
     # "Alkaline-earth metals"
@@ -176,16 +181,16 @@ LOGall_species_smoke_plot <- ggplot(full_sampPM_coeffsMF %>%
   )) +
   scale_color_manual(values = spec_pal)+
   geom_hline(yintercept = 0, linetype = "dashed", color = 'grey') + # 0.000006486634
-  
-  scale_y_continuous(trans='log10', 
-                     limits = c(0.000001,.5), 
+  # facet_grid(~species_type, scales = 'free_x') +
+  scale_y_continuous(trans='log10',
+                     limits = c(0.000001,.5),
                      breaks=c(0.000001, 0.00001, .0001, .001,  0.01, 0.1,  0.5),
-                     labels=c('0.000001', '0.00001', '.0001', '.001', '0.01', '0.1', '0.5')) +
-  labs(y = 'Effect on species concentration (ug/m3)',
+                     labels=c('0.000001', '0.00001', '0.0001', '0.001', '0.01', '0.1', '0.5')) +
+  labs(y = 'Effect on species concentration',
        x = 'Species',
        color = 'Species Category', 
-       title = expression(paste("Variation in how wildfire smoke ", "PM"["2.5"], " effects species' concentrations"))) + 
-  theme_light() +
+       title = expression(paste("Effect on species concentration (ug/m3)"))) + 
+  theme_minimal() +
   coord_flip() +
   theme(panel.border = element_blank(), 
         panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
@@ -193,9 +198,15 @@ LOGall_species_smoke_plot <- ggplot(full_sampPM_coeffsMF %>%
         title= element_text(size=12, face='bold'),
         axis.title.x = element_text(size=11, face = 'plain'),
         axis.title.y = element_text(size=11, face = 'plain')) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = 'grey50')
+  theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust=1)) +
+  geom_hline(yintercept = 0.000001, linetype = "dotted", color = 'grey85') +
+  geom_hline(yintercept = 0.00001, linetype = "dotted", color = 'grey85') +
+  geom_hline(yintercept = .0001, linetype = "dotted", color = 'grey85') +
+  geom_hline(yintercept = .001, linetype = "dotted", color = 'grey85') +
+  geom_hline(yintercept = 0.01, linetype = "dotted", color = 'grey85') +
+  geom_hline(yintercept = 0.1, linetype = "dotted", color = 'grey85') +
+  geom_hline(yintercept = 0.5, linetype = "dotted", color = 'grey85')
 LOGall_species_smoke_plot
-
 # save file
 
 ggsave(
@@ -206,6 +217,16 @@ ggsave(
   width = 8,
   height = 10,
   dpi = 320) 
+
+ggsave(
+  filename = 'Fig2_PM_MF_spec_log_coeffs.png',
+  plot = LOGall_species_smoke_plot,
+  path = file.path(results_fp, 'figures/Fig2'),
+  scale = 1,
+  width = 8,
+  height = 10,
+  dpi = 320) 
+
 
 return(full_samp_PMcoeffs_normalized)
 

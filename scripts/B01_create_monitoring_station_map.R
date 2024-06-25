@@ -46,10 +46,10 @@ create_map_of_monitoring_stations <- function(clean_PMspec_df, us_states_fp) {
     mutate(mon_dur_cat = paste0(Dataset, "-", duration_cat))
   
   mon_map <- ggplot() +
-    geom_sf(data = us_sf, fill = "grey95") +  # Add the base map
+    geom_sf(data = us_sf, fill = "grey99") +  # Add the base map
     geom_sf(data = monitor_sf, aes(color = duration_cat, 
                                    shape =Dataset), size = 2, alpha =.70) +  # Add point data
-    scale_color_manual(values=c('goldenrod1', 'chocolate1', 'darkred')) + 
+    scale_color_manual(values=c('lavenderblush3', 'thistle3', 'plum4')) + 
     scale_shape_manual(values=c(16, 17)) + 
     theme_minimal() +  # Apply a minimal theme
     theme(

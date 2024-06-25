@@ -1,10 +1,10 @@
 # Emma Krasovich Southworth, emmars@stanford.edu
 # Last Updated: Jan 16, 2023
-# Description: set up speciation and smoke data for descriptive statistics
+# Description: set up speciation and smoke data for analysis, final cleaning steps
 
 # loadd(spec_w_smoke_pm_df, cache = drake_cache)
 
-
+# speciation data
 final_speciation_cleaning_pre_analysis <- function(spec_w_smoke_pm_df) {
   
   # step 1: clean up the speciation data
@@ -14,7 +14,8 @@ final_speciation_cleaning_pre_analysis <- function(spec_w_smoke_pm_df) {
     mutate_if(is.numeric, ~ifelse(is.nan(.), NA, .)) %>% 
     mutate_at(vars(MF, RCFM, smokePM2.5, AL, AS, BR, CA, CHL, CL, CR, CU,
                    EC, FE, K, MG, MN, `NA`, NI, NO3, OC, P, PB,
-                   RB, S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR), ~ifelse(. < -100, NA, .)) %>%
+                   RB, S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR
+                   ), ~ifelse(. < -100, NA, .)) %>%
     # drop a row if concentrations for all chemicals are NA
     filter_at(vars(MF, RCFM, smokePM2.5, AL, AS, BR, CA, CHL, CL, CR, CU,
                     EC, FE, K, MG, MN, `NA`, NI, NO3, OC, P, PB,
@@ -59,15 +60,12 @@ final_speciation_cleaning_pre_analysis <- function(spec_w_smoke_pm_df) {
     mutate(units = 'ug_m3') %>%
     # ensure unique observations
     distinct() %>% 
-    # do some cleaning of PM2.5 data, when measure for total PM is missing, set = to smoke PM
+    # do some cleaning of PM2.5 data, when measure for total PM is missing, 
+    # set = to smoke PM, or when smoke PM is greater than total PM, set total PM = smoke PM
     mutate(MF_adj = ifelse(is.na(MF), smokePM2.5, MF),
            RCFM_adj = ifelse(is.na(RCFM), smokePM2.5, RCFM)) %>% 
-    # now drop if all speciation vars are NA for a row
-    # # drop a row if concentrations for all chemicals are NA
-    # filter_at(vars(AL, AS, BR, CA, CHL, CL, CR, CU,
-    #                EC, FE, K, MG, MN, `NA`, NI, NO3, OC, P, PB,
-    #                RB, S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR),
-    #           any_vars(!is.na(.))) %>% 
+    # if total PM is less than smoke PM, set total to be smoke PM
+    mutate(MF_adj = ifelse(MF_adj < smokePM2.5, smokePM2.5, MF_adj)) %>% 
     # calculate station smoke and non smoke using total PM var (PM2.5)
     mutate(nonsmokePM_MF = MF_adj - smokePM2.5,
            nonsmokePM_RCFM = RCFM_adj - smokePM2.5) %>% 

@@ -22,23 +22,6 @@ spec_regional_avgs_df <- reg_df %>%
   group_by(region, species) %>% 
   dplyr::summarise(baseline_avg = mean(conc, na.rm = TRUE), .groups = 'drop') 
 
-# long conc
-# conc_long_df <- reg_df %>% 
-#   dplyr::select(Dataset:region,monitor_month, AL:ZN, smoke_day) %>% 
-#   pivot_longer(cols =c(AL:ZN), names_to = 'species', values_to = 'conc') %>% 
-#   filter(!is.na(conc))
-
-# Create a histogram of each regions number of stations
-# hist_plot <- ggplot(conc_long_df, 
-#                     aes(x = conc, fill = region)) +
-#   geom_histogram(position = "identity", color = "black", alpha = 0.7, bins = 500) +
-#   facet_wrap(~species, scales = "free") +
-#   labs(title = "Distribution of concetration by species and region",
-#        x = "Concentration (ug/m3)",
-#        y = "Frequency") +
-#   theme_minimal()
-# hist_plot
-
 #  ------------------------------------------------------------------
 # REGIONAL ANALYSIS ----------------------------------------
 #  ------------------------------------------------------------------
@@ -59,7 +42,6 @@ CIs <- confint(
          CI975 = '97.5 %') %>% 
   mutate(measure = 'MF') %>% 
   dplyr::select(-id, -sample.var) %>% 
-  #filter(pm_type == 'smokePM') %>% 
   filter(region != 'Full sample')
 
 
@@ -74,7 +56,7 @@ regionalPM_coeffs <- coeftable(regional_PM_reg) %>%
   filter(region != 'Full sample') %>% 
   # get pvalues
   mutate(sig = ifelse(pval > .05, 'non-significant', 'significant')) %>% 
-  dplyr::select(-id, -sample.var, -`t value`)  %>% 
+  dplyr::select(-id, -sample.var)  %>% 
   left_join(parameter_categories, by = 'species') %>% 
   mutate(measure = 'MF') %>% 
   left_join(CIs,
@@ -88,23 +70,24 @@ regionalPMcoeffs_normalized <- regionalPM_coeffs %>%
          norm_CI25 = CI25/baseline_avg,
          norm_CI975 = CI975/baseline_avg) 
 
-limits <- c(
+limits <- c(" ",
   # "Organics"
-  "Organic Carbon (OC)", "Elemental Carbon (EC)", " ", " ", 
+  "Organic Carbon (OC)"," ", "Elemental Carbon (EC)", " ", " ", 
   # "Halogens"
-  "Bromine (Br)", "Chlorine (Cl)", "Chloride (Chl)", " "," ", 
+  "Bromine (Br)"," ", "Chlorine (Cl)"," ", "Chloride (Chl)", " "," ", 
   #  "Nonmetals"
-  "Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Phosphorus (P)", "Selenium (Se)",  " "," ", 
+  "Phosphorus (P)"," ","Sulfur (S)"," ", "Sulfate (SO4)", " ", "Nitrate (NO3)"," ", "Selenium (Se)", " "," ",
   # "Other metals"
-  "Titanium (Ti)", "Aluminum (Al)", "Lead (Pb)", " "," ", 
+  "Titanium (Ti)"," ", "Aluminum (Al)"," ", "Lead (Pb)", " "," ", 
   # "Metalloids"
-  "Silicon (Si)", "Arsenic (As)", " "," ", 
+  "Silicon (Si)"," ", "Arsenic (As)", " "," ", 
   # "Transition metals"
-  "Zinc (Zn)", "Manganese (Mn)",  "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)", " "," ", 
+  "Manganese (Mn)"," ", "Zinc (Zn)"," ",  "Iron (Fe)", " ","Copper (Cu)", " ","Vanadium (V)", " ","Nickel (Ni)"," ", "Chromium (Cr)", " "," ", 
   # "Alkali metals"
-  "Potassium (K)", "Rubidium (Rb)", "Sodium (Na)", " "," ", 
+  "Potassium (K)"," ", "Rubidium (Rb)", " ","Sodium (Na)", " "," ", 
   # "Alkaline-earth metals"
-  "Strontium (Sr)","Calcium (Ca)",  "Magnesium (Mg)")
+  "Strontium (Sr)"," ","Calcium (Ca)"," ",  "Magnesium (Mg)", " ")
+
 
 # PLOT ALL TOGETHER NO FACETS
 regional_reg_plot <- ggplot(regionalPMcoeffs_normalized %>% 
@@ -112,7 +95,7 @@ regional_reg_plot <- ggplot(regionalPMcoeffs_normalized %>%
                             aes(x = species_long,
                                 y = 100*norm_est,
                                 color = region)) +
-  geom_point(size=3, alpha = 0.7, stat = "identity", position = position_dodge(width = .8)) +
+  geom_point(size=3, alpha = 0.6, stat = "identity", position = position_dodge(width = .8)) +
   geom_linerange(aes(ymin = (100*norm_CI25),
                      ymax = (100*norm_CI975)), stat = "identity", position = position_dodge(width = .8)) +
   scale_x_discrete(limits = rev(limits)) +
@@ -127,17 +110,33 @@ regional_reg_plot <- ggplot(regionalPMcoeffs_normalized %>%
         panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         axis.line = element_line(colour = "black"),
         title= element_text(size=12, face='bold'),
+        legend.position = "top",
         axis.title.x = element_text(size=11, face = 'plain'),
         axis.title.y = element_text(size=11, face = 'plain')) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = 'grey') +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis text by 90 degrees
+  theme(axis.text.x = element_text(angle = 40, hjust = 1)) + # Rotate x-axis text by 90 degrees
+  geom_vline(xintercept = 7.5, linetype = "dotted", color = 'grey85') +
+  geom_vline(xintercept = 14.5, linetype = "dotted", color = 'grey85') + 
+  geom_vline(xintercept = 29.5, linetype = "dotted", color = 'grey85') +
+  geom_vline(xintercept = 34.5, linetype = "dotted", color = 'grey85') +
+  geom_vline(xintercept = 41.5, linetype = "dotted", color = 'grey85') +
+  geom_vline(xintercept = 52.5, linetype = "dotted", color = 'grey85') +
+  geom_vline(xintercept = 59.5, linetype = "dotted", color = 'grey85') 
 regional_reg_plot
 
 # save file
 ggsave(
-  filename = 'Fig3_regional_smoke_coeffs_NOFACET_wide_raw.pdf',
+  filename = 'SIFig2_regional_smoke_coeffs_NOFACET_wide_raw.pdf',
   plot = regional_reg_plot,
-  path = file.path(results_fp, 'figures/Fig3'),
+  path = file.path(results_fp, 'figures/SI Figs'), 
+  scale = 1,
+  width = 11,
+  height = 8,
+  dpi = 320) 
+
+ggsave(
+  filename = 'SIFig2_regional_smoke_coeffs_NOFACET_wide_raw.png',
+  plot = regional_reg_plot,
+  path = file.path(results_fp, 'figures/SI Figs'),
   scale = 1,
   width = 11,
   height = 8,

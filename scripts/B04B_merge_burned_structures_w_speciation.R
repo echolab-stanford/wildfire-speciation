@@ -88,24 +88,34 @@ grid_smoke_structure_dt <- gridcell_smokepm_dt %>%
 merged_smoke_spec_burned_structures_df <- monitor_reading_df %>% 
   left_join(grid_smoke_structure_dt %>%
               dplyr::select(ID, month, year, Date ='date', contrib_smokePM, contrib_daily_structures_destroyed),
-            by=c("ID","month","year","Date")) %>% 
-  filter(!is.na(contrib_daily_structures_destroyed)) %>% 
-  dplyr::select(ID, Dataset:site_id, contrib_daily_structures_destroyed,
-                smokePM:ZR, nonsmokePM_MF) %>% 
-  filter_at(vars(AL, AS, BR, CA, CHL, CL, CR, CU,
-                 EC, FE, K, MG, MN, `NA`, NI, NO3, OC, P, PB,
-                 RB, S, SE, SI, SO4, SR, TI, V, ZN, ZR),
-            any_vars(!is.na(.))) #%>% 
-  # group_by(ID, month, year, date, contrib_daily_structures_destroyed, smokePM) %>% 
-  # dplyr::summarise_at(
-  #   vars(AL, AS, BR, CA, CHL, CL, CR, CU,
-  #        EC, FE, K, MG, MN, `NA`, NI, NO3, OC, P, PB,
-  #        RB, S, SE, SI, SO4, SR, TI, V, ZN, ZR), ~mean(., na.rm = TRUE)
-  # ) %>% 
-  # ungroup()
-
+            by=c("ID","month","year","Date")) #%>% 
+  # filter(!is.na(contrib_daily_structures_destroyed)) %>% 
+  # dplyr::select(ID, Dataset:site_id, contrib_daily_structures_destroyed,
+  #               smokePM:ZR, nonsmokePM_MF) %>% 
+  # filter_at(vars(AL, AS, BR, CA, CHL, CL, CR, CU,
+  #                EC, FE, K, MG, MN, `NA`, NI, NO3, OC, P, PB,
+  #                RB, S, SE, SI, SO4, SR, TI, V, ZN, ZR),
+  #           any_vars(!is.na(.))) 
 
 future::plan(NULL)
 
 return(merged_smoke_spec_burned_structures_df)
 }
+
+# for IVAN
+# grid_smoke_structure_dt <- gridcell_smokepm_dt %>%
+#   left_join(globfire_structure_joined_df %>%
+#               mutate(Id = as.character(Id),
+#                      fire_duration=as.integer(FDate-IDate)) %>%
+#               mutate(fire_duration = ifelse(fire_duration == 0, 1, fire_duration), # for fires that were only 1 day, calculation gives 0, but should be 1
+#                      daily_structures_destroyed=structures_destroyed/fire_duration) %>%
+#               dplyr::select(Id, year, IDate, FDate, fire_duration, incid_name_lower, coverage_perc,
+#                             structures_destroyed, daily_structures_destroyed),
+#             by=c("fire_id"="Id", "year"="year")) %>%
+#   mutate(structures_destroyed=ifelse(is.na(structures_destroyed), 0, structures_destroyed),
+#          contrib_structures_destroyed=share*structures_destroyed,
+#          daily_structures_destroyed=ifelse(is.na(daily_structures_destroyed), 0, daily_structures_destroyed),
+#          contrib_daily_structures_destroyed=share*daily_structures_destroyed) %>% 
+#   dplyr::select(-smokePM_pred)
+# 
+# write_feather(grid_smoke_structure_dt, "/Users/ekrasovich/Desktop/grid_smoke_structure_dt.feather")
