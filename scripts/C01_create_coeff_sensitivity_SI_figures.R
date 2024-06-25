@@ -141,17 +141,17 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
       # "Halogens"
       "Bromine (Br)", "Chlorine (Cl)", "Chloride (Chl)", 
       #  "Nonmetals"
-      "Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Phosphorus (P)", "Selenium (Se)", 
+      "Phosphorus (P)","Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Selenium (Se)", 
       # "Other metals"
       "Titanium (Ti)", "Aluminum (Al)", "Lead (Pb)",
       # "Metalloids"
       "Silicon (Si)", "Arsenic (As)",
       # "Transition metals"
-      "Zinc (Zn)", "Manganese (Mn)",  "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
+      "Manganese (Mn)", "Zinc (Zn)", "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
       # "Alkali metals"
       "Potassium (K)", "Rubidium (Rb)", "Sodium (Na)",
       # "Alkaline-earth metals"
-      "Strontium (Sr)","Calcium (Ca)",  "Magnesium (Mg)" 
+      "Strontium (Sr)","Calcium (Ca)",  "Magnesium (Mg)"
     )) +
     scale_color_manual(values= c("steelblue", 'navy')) +
     coord_flip() +
@@ -172,23 +172,22 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
     
   PM_robustness
   
-  
   # save file
   ggsave(
-    filename = 'SIFig1_PM_Robustness_checks.pdf',
+    filename = 'SIFig1A_PM_Robustness_checks.pdf',
     plot = PM_robustness,
     path = file.path(results_fp, 'figures/SI Figs'),
     scale = 1,
-    width = 7,
+    width = 5,
     height = 7,
     dpi = 320) 
   
   ggsave(
-    filename = 'SIFig1_PM_Robustness_checks.png',
+    filename = 'SIFig1A_PM_Robustness_checks.png',
     plot = PM_robustness,
     path = file.path(results_fp, 'figures/SI Figs'),
     scale = 1,
-    width = 7,
+    width = 5,
     height = 7,
     dpi = 320) 
   
@@ -264,17 +263,17 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
       # "Halogens"
       "Bromine (Br)", "Chlorine (Cl)", "Chloride (Chl)", 
       #  "Nonmetals"
-      "Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Phosphorus (P)", "Selenium (Se)", 
+      "Phosphorus (P)","Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Selenium (Se)", 
       # "Other metals"
       "Titanium (Ti)", "Aluminum (Al)", "Lead (Pb)",
       # "Metalloids"
       "Silicon (Si)", "Arsenic (As)",
       # "Transition metals"
-      "Zinc (Zn)", "Manganese (Mn)",  "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
+      "Manganese (Mn)", "Zinc (Zn)", "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
       # "Alkali metals"
       "Potassium (K)", "Rubidium (Rb)", "Sodium (Na)",
       # "Alkaline-earth metals"
-      "Strontium (Sr)","Calcium (Ca)",  "Magnesium (Mg)" 
+      "Strontium (Sr)","Calcium (Ca)",  "Magnesium (Mg)"
     )) +
     scale_color_manual(values= c("goldenrod1", 'coral'),
                        labels = c("No", "Yes"),
@@ -298,12 +297,20 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
   
   # save file
   ggsave(
-    filename = 'SIFig4_Covariate_Robustness_checks.pdf',
+    filename = 'SIFig1B_Covariate_Robustness_checks.pdf',
     plot = covariate_robustness,
     path = file.path(results_fp, 'figures/SI Figs'),
     scale = 1,
-    width = 8,
-    height = 8,
+    width = 5,
+    height = 7,
+    dpi = 320) 
+  ggsave(
+    filename = 'SIFig1B_Covariate_Robustness_checks.png',
+    plot = covariate_robustness,
+    path = file.path(results_fp, 'figures/SI Figs'),
+    scale = 1,
+    width = 5,
+    height = 7,
     dpi = 320) 
   
   # -----------------------------------------------------------------------------
@@ -466,13 +473,61 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
            norm_CI975 = CI975/avg_nonsmoke_spec_conc) %>% 
     filter(pm_type == 'smokePM') 
   
+  
+  mod5 = feols(c(AL,AS,BR, CA, CL, CHL,CR, CU, EC, FE,
+                 K, MG,MN, `NA`, NI, NO3, OC, P, PB, RB,
+                 S,  SE, SI, SO4, SR, TI, V,  ZN)
+               ~ smokePM + nonsmokePM_MF , reg_df, cluster = 'site_id') 
+  ## calculate 95 CI%
+  CIs5 <- confint(mod5) %>% 
+    rename(species = 'lhs',
+           pm_type = 'coefficient',
+           CI25 = '2.5 %',
+           CI975 = '97.5 %') %>% 
+    mutate(FEs = 'none') %>% 
+    dplyr::select(-id)
+  
+  # get coefficients and prepare for plotting
+  coeffs5 <- coeftable(mod5) %>% 
+    rename(pval = 'Pr(>|t|)',
+           se = 'Std. Error',
+           species = 'lhs',
+           pm_type = 'coefficient') %>% 
+    mutate(pval = round(pval, digits = 3)) %>% 
+    dplyr::select(-id)  %>% 
+    left_join(parameter_categories, by = 'species') %>% 
+    mutate(species_type = fct_relevel(species_type,
+                                      c("Alkaline-earth metals", "Alkali metals", 
+                                        "Transition metals", "Metalloids", "Other metals", 
+                                        "Nonmetals",  "Halogens", "Organics"))) %>% 
+    left_join(CIs5, by = c('species', 'pm_type'))
+  
+  # merge sample avg for each species and divide each species' betas by full sample avg for each species
+  coeffs5_normalized <- coeffs5 %>% 
+    left_join(spec_ns_samp_avgs_df, by = 'species') %>% 
+    mutate(norm_est = Estimate/avg_nonsmoke_spec_conc, # how much a species has changed relative to its baseline
+           norm_CI25 = CI25/avg_nonsmoke_spec_conc,
+           norm_CI975 = CI975/avg_nonsmoke_spec_conc) %>% 
+    filter(pm_type == 'smokePM') 
+  
+  
   # bind together:
   all_coeffs_mods <- bind_rows(coeffs1_normalized, 
                                coeffs3_normalized, 
                                coeffs2_normalized, 
                                coeffs4_normalized,
+                               coeffs5_normalized,
                                full_samp_PMcoeffs_normalized %>% 
-                                 mutate(FEs = 'monitor-month + year')) 
+                                 mutate(FEs = 'monitor-month + year (main)')) 
+  all_coeffs_mods <- all_coeffs_mods %>% 
+    mutate(FEs = fct_relevel(FEs, 
+                             c("none",
+                               "region + month", 
+                               "region + year",
+                               "monitor + month",
+                               "monitor + year",
+                               "monitor-month + year (main)")))
+  
   
   # plot coefficients for speciation at the avg monitor which tells us how much 
   # of a chemical species is in 1 ug/m3 of smoke PM2.5 and nonsmoke PM2.5
@@ -493,19 +548,19 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
       # "Halogens"
       "Bromine (Br)", "Chlorine (Cl)", "Chloride (Chl)", 
       #  "Nonmetals"
-      "Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Phosphorus (P)", "Selenium (Se)", 
+      "Phosphorus (P)","Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Selenium (Se)", 
       # "Other metals"
       "Titanium (Ti)", "Aluminum (Al)", "Lead (Pb)",
       # "Metalloids"
       "Silicon (Si)", "Arsenic (As)",
       # "Transition metals"
-      "Zinc (Zn)", "Manganese (Mn)",  "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
+      "Manganese (Mn)", "Zinc (Zn)", "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
       # "Alkali metals"
       "Potassium (K)", "Rubidium (Rb)", "Sodium (Na)",
       # "Alkaline-earth metals"
       "Strontium (Sr)","Calcium (Ca)",  "Magnesium (Mg)" 
     )) +
-    scale_color_manual(values= c("lightpink", 'palevioletred','deeppink', 'purple', 'slateblue4'),
+    scale_color_manual(values= c("lightpink", 'palevioletred','deeppink', 'purple', 'slateblue4', 'grey15'),
                        name = "Model specification") +
     coord_flip() +
     geom_hline(yintercept = 0, linetype = "dashed", color = 'grey') +
@@ -526,21 +581,21 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
   
   # save file
   ggsave(
-    filename = 'SIFig3_ModelSpec_Robustness_checks.pdf',
+    filename = 'SIFig1C_ModelSpec_Robustness_checks.pdf',
     plot = specification_robustness,
     path = file.path(results_fp, 'figures/SI Figs'),
     scale = 1,
-    width = 8,
-    height = 8,
+    width = 5,
+    height = 7,
     dpi = 320) 
   
   ggsave(
-    filename = 'SIFig3_ModelSpec_Robustness_checks.png',
+    filename = 'SIFig1C_ModelSpec_Robustness_checks.png',
     plot = specification_robustness,
     path = file.path(results_fp, 'figures/SI Figs'),
     scale = 1,
-    width = 8,
-    height = 8,
+    width = 5,
+    height = 7,
     dpi = 320) 
   
   sensitivity_checks_coeffs <- bind_rows(all_coeffs, all_coeffs2, all_coeffs_mods)

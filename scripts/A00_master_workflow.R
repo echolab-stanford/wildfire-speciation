@@ -25,7 +25,8 @@ list.files(here::here(), full.names=T, pattern = '(^A|^B|^C)') %>%
   str_subset('calculate_pop', negate = TRUE) %>%
   str_subset('C02_CSN_V_improve_sensitivty', negate = TRUE) %>%
   str_subset('CCcombine_gridded_predictions_w_toxicity_vals', negate = TRUE) %>%
-  str_subset('estimating_conc_response', negate = TRUE) %>%
+  #str_subset('estimating_conc_response', negate = TRUE) %>%
+ # str_subset('B04D_randomization', negate = TRUE) %>% 
 walk(source)
 
 
@@ -87,9 +88,19 @@ wildfire_plan <- drake_plan(
   # 3b. save out "raw" speciation sites, pre-dropping monitor-days for analysis
     CONUS_spec_sites_df = CONUS_spec_df %>% 
       distinct(Dataset, site_id, state_name, long, lat, epsg),
-    CONUS_spec_sites_df_out = write.csv(CONUS_spec_sites_df,
-                                         file_out(!!file.path(
-                                           data_fp, "intermediate/CONUS_combined_speciation_sites_2006_2020.csv"))),
+    
+  
+  #3c. read in haps data and clean
+  # haps_spec_file_list = list.files(file.path(data_fp, "raw"), 
+  #                                  pattern = "daily_HAPS", full.names= TRUE),
+  # 
+   # haps_spec_df = target(
+   #  read_in_HAPS_speciation_data(
+   #    us_shp,
+   #    haps_spec_file_list,
+   #    haps_xwalk_fp = file_in(!!file.path(data_fp, 'intermediate/haps_xwalk_IUR_weight.csv')),
+   #    spec_w_smoke_pm_df
+   #    )),
   
   # # --------------------------------------------------------------------------------
   # # Step 4) merge smoke PM2.5 data with speciation data
@@ -102,8 +113,12 @@ wildfire_plan <- drake_plan(
         #pm_fp = file_in(!!file.path(data_fp, 'intermediate/smokePM_predictions_20060101-20230630.rds')),
         grid_fp = file_in(!!file.path(data_fp, 'intermediate/10km_grid_wgs84.shp'))
         )),
-
-
+  
+  # #4b. merge with haps
+  # all_spec_df = target(
+  #   merge_spec_smoke_w_HAPS(
+  #     spec_w_smoke_pm_df, haps_spec_df)),
+  
   # --------------------------------------------------------------------------------
   # Step 5) final cleaning and prepping data for analysis
   # --------------------------------------------------------------------------------
@@ -166,7 +181,7 @@ wildfire_plan <- drake_plan(
     plot_monthly_mean_raw_all_specices(clean_PMspec_df, 
                                        parameter_categories, 
                                        spec_pal)),
-  
+
   # # --------------------------------------------------------------------------------
   # # FIGURE 2
   # # --------------------------------------------------------------------------------
@@ -178,14 +193,21 @@ wildfire_plan <- drake_plan(
   full_samp_coeffs_out = write.csv(full_samp_PMcoeffs_normalized,
                                         file_out(!!file.path(data_fp, "clean/full_sample_coeffs.csv")),
                                         row.names = FALSE),
-  
-  
+
+  # create table for coeffs to put in supplementary info
+  tab_df = full_samp_PMcoeffs_normalized %>% 
+    dplyr::select(species = 'species_name', est = 'Estimate', se, tval = `t value`, pval, 
+                  baseline_NS_conc = 'avg_nonsmoke_spec_conc', 
+                  norm_est, norm_CI25, norm_CI975) %>% 
+    mutate(norm_est = 100*norm_est, 
+           norm_CI25= 100*norm_CI25, norm_CI975 = 100*norm_CI975),
+  #print(xtable(tab_df, digits = 4), include.rownames=FALSE)
+
   # 2b) create regional map for regional plot
   us_region_map = target(
     create_us_region_map(
       us_states_fp = file_in(!!(file.path(boundaries_fp, 'all_national_states.rds'))),
       region_pal)),
-  
   
   # 2c) Plot the regional coefficients
   regionalPMcoeffs_normalized = target(
@@ -194,44 +216,70 @@ wildfire_plan <- drake_plan(
                                   file_out(!!file.path(data_fp, "clean/regional_coeffs.csv")),
                                   row.names = FALSE),
   
+  # create table for coeffs to put in supplementary info
+  reg_tab_df = regionalPMcoeffs_normalized %>% 
+    filter(pm_type == 'smokePM') %>% 
+    dplyr::select(region, species = 'species_name', est = 'Estimate', se, pval, 
+                  baseline_avg, norm_est, norm_CI25, norm_CI975) %>% 
+    mutate(norm_est = 100*norm_est, 
+           norm_CI25= 100*norm_CI25, norm_CI975 = 100*norm_CI975),
+  
+  # print(xtable(reg_tab_df, digits = 4), include.rownames=FALSE)
+
   # --------------------------------------------------------------------------------
-  # FIGURE 3 - adapt jeff's code into this pipeline
+  # FIGURE 3 - attributable fraction over time
   # --------------------------------------------------------------------------------
-  # 3a) Process fire + structures burned data
+  # 3a) create data using regional model coeffs + predicting attributable fraction in smoke 
+  # pred_regional_attributable_preds = target(
+  #   create_attributable_frac_w_regional_coeffs(
+  #     grid_fp = file_in(!!file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')),
+  #     clean_PMspec_df, parameter_categories, pm_pal, full_samplePM_df, regionalPMcoeffs_normalized)),
+  # 
+  # # 3b) create plot attributable fraction due to smoke plot
+  # attr_frac_df = target(
+  #   plot_attributable_frac_trends(pred_regional_attributable_preds, spec_pal)),
+  
+
+  # --------------------------------------------------------------------------------
+  # FIGURE 4 BURNED STRUCTURES + RANDOMIZATION INFERENCE
+  # --------------------------------------------------------------------------------
+  # 4a) Process fire + structures burned data
   globfire_structure_joined_df = target(
     processing_burned_structures_data(
       globfire_fp = file_in(!!(file.path(data_fp, 'intermediate/globfire/globfire_na_final_area_2006-2020.shp'))),
       mtbs_fp = file_in(!!(file.path(data_fp, 'intermediate/mtbs/mtbs_perims_DD.shp'))),
       nifc_fp = file_in(!!(file.path(data_fp, "intermediate/fire_locations/WFIGS_-_Wildland_Fire_Locations_Full_History.csv"))),
       damaged_struct_fp = file_in(!!(file.path(data_fp, 'clean/HE_Structures_Destroyed_2022.xlsx')))
-      )),
-    
-  # 3b) merge burned structures with speciation data and clean
+    )),
+  
+  # 4b) merge burned structures with speciation data and clean
   burned_struc_smoke_spec_df = target(
     merge_burned_structures_w_speciation(
       globfire_structure_joined_df, clean_PMspec_sites_df, clean_PMspec_df,
       grid_fp = file_in(!!(file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')))
-                        )),
+    )),
   
-  # 3c) 
-  # boostrapped_CIs_df = target(
-  #   estimating_conc_response_2_burned_structures(
-  #     burned_struc_smoke_spec_df, 
-  #     parameter_categories)),
-
-  # --------------------------------------------------------------------------------
-  # FIGURE 4
-  # --------------------------------------------------------------------------------
-  # 4a) create data using regional model coeffs + predicting attributable fraction in smoke 
-  # pred_regional_attributable_preds = target(
-  #   create_attributable_frac_w_regional_coeffs(
-  #     grid_fp = file_in(!!file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')),
-  #     clean_PMspec_df, parameter_categories, pm_pal, full_samplePM_df, regionalPMcoeffs_normalized)),
-
-  # 4b) create plot attributable fraction due to smoke plot
-  attr_frac_df = target(
-    plot_attributable_frac_trends(pred_regional_attributable_preds, spec_pal)),
-
+  # 4c) estimate how an additional burned structure impacts the concentration of certain chemicals
+  burned_structure_coeffs = target(
+    estimating_conc_response_2_burned_structures(
+      burned_struc_smoke_spec_df,
+      parameter_categories,
+      spec_pal)),
+  
+  bs_coeffs_tab = burned_structure_coeffs %>% 
+    filter(species %in% c('MG','TI', 'MN','PB', 'CU', 'NI', 'ZN', 'AS', 'CR')) %>% 
+    filter(coefficient == 'smokePM:contrib_daily_structures_destroyed') %>% 
+    mutate(pct_est = 100*no_struc_smoke_est,
+           pct_CI25 = no_struc_smoke_CI25*100,
+           pct_CI975 =no_struc_smoke_CI975*100) %>% 
+    dplyr::select(species_long, avg_no_struc_spec_conc, no_struc_smoke_est, CI25, CI975,
+                  pct_est, pct_CI25, pct_CI975),
+  # print(xtable(bs_coeffs_tab, digits = -2), include.rownames=FALSE)
+  
+  # 4d) run permutation test through randomization inference
+  # permutation_results_df = target(
+  #   randomization_inference_permutation_test(
+  #     burned_struc_smoke_spec_df, parameter_categories)),
 
   # --------------------------------------------------------------------------------
   # FIGURE 5 
@@ -271,19 +319,21 @@ wildfire_plan <- drake_plan(
   # --------------------------------------------------------------------------------
   # SUPPLEMENTARY FIGURES
   # -------------------------------------------------------------------------------
-  # coeffs_robustness = target(
-  #   create_coeff_sensitivity_SI_figures(
-  #     clean_PMspec_df, 
-  #     parameter_categories, 
-  #     spec_pal))
-    
+  coeffs_robustness = target(
+    create_coeff_sensitivity_SI_figures(
+      clean_PMspec_df,
+      parameter_categories,
+      spec_pal)),
+  
+  SB_agg_df = target(
+    make_SI_burned_structures_time_series_plot(
+      globfire_structure_joined_df))
     
   
-
-) # end plan
+ ) # end plan
 
 # make plan
-if(file.exists(".drake")){
+if(file.exists(".drake")) {
   drake_cache = drake::drake_cache(".drake")
 } else {
   drake_cache = drake::new_cache(".drake")
@@ -291,35 +341,3 @@ if(file.exists(".drake")){
 make(wildfire_plan, cache = drake_cache)
 
 
-
-
-
-
-
-
-# OLD CODE
-# 4a) create plot by using full model coeffs + predicting attributable fraction in smoke
-# monitor_attributable_preds = target(
-#   create_attributable_frac_time_series(
-#     clean_PMspec_df, pm_pal, parameter_categories)),
-
-#5b) using regional betas, predict the concentration of each species in 
-# each grid cell attributable to wildfire
-# all_species_regions_avg_preds_sf = target(
-#   create_regional_species_conc_predictions(
-#     grid_fp = file_in(!!file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')),
-#     regionalPMcoeffs_normalized, 
-#     us_region_map, 
-#     full_samplePM_df)),
-
-# # save
-# all_region_species_pred_grid_conc_out = fst::write_fst(
-#   all_species_regions_avg_preds_sf,
-#   file_out(!!file.path(data_fp, "intermediate/selected_species_gridded_regional_avg_pred_attr_conc.fst"))),
-
-# conc_map_df = target(
-#   map_spatial_distribution_conc(
-#     grid_fp = file_in(!!file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')),
-#     reg_pal)),
-
-  

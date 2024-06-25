@@ -4,18 +4,17 @@
 # https://aqs.epa.gov/aqsweb/airdata/download_files.html
 
 
-# get list of raw EPA PM2.5 files in raw data folder
-# csn_pm25_list = list.files(file.path(data_fp, 'raw'), pattern = 'daily_88101', full.names = TRUE)
-# csn_spec_file_list = list.files(file.path(data_fp, 'raw'), pattern = 'daily_SPEC', full.names = TRUE)
-# improve_params_fp = file.path(data_fp, 'raw/IMPROVE_parameters.csv')
-# csn_param_fp <- file.path(data_fp, 'raw/CSN_parameters.csv')
+
+# loadd(c(us_shp,spec_w_smoke_pm_df), cache = drake_cache)
+# haps_spec_file_list = list.files(file.path(data_fp, "raw"),
+#                                  pattern = "daily_HAPS", full.names= TRUE)
+# haps_xwalk_fp = file.path(data_fp, 'intermediate/haps_xwalk_IUR_weight.csv')
 
 # FUNCTION ------------------------------------------------------------------------------------
-read_in_HAPS_speciation_data <- function(csn_spec_file_list, csn_pm25_list, csn_param_fp) {
+read_in_HAPS_speciation_data <- function(us_shp, haps_spec_file_list, haps_xwalk_fp, spec_w_smoke_pm_df) {
  
   # step 1 ----------------------------------------------
   # testing one file at a time
-  haps_spec_file_list = list.files(file.path(data_fp, "raw"), pattern = "daily_HAPS", full.names= TRUE)
   # current_file <- haps_spec_file_list[1]
   
   # read each in file, clean up, and ensure that parameters match those in the improve data
@@ -79,7 +78,68 @@ haps_spec_df <- haps_spec_files %>%
            Datum == 'NAD83' ~ 4629)) %>% 
   dplyr::select(-Datum)
 
-  return(haps_spec_df)
+# update the crs:
+# TRANSFORM SITE COORDS TO SAME EPSG (PROJECTION)
+# list all the unique EPSGs
+epsg_vec <- unique(haps_spec_df$epsg)
+#  current_epsg <- epsg_vec[1] # test to see if this works
+
+# map over each crs in the list, assign the appropriate crs, then convert to one crs
+all_spec_transformed_df <- map_df(epsg_vec, function(current_epsg) {
   
+  current_sf <- haps_spec_df %>% 
+    filter(epsg == current_epsg) %>% 
+    # create a spatial dataframe with the given epsg
+    st_as_sf(crs = current_epsg, coords = c('long', 'lat')) %>% 
+    # transform the dataframe to be WGS84 (or EPSG 4326)
+    st_transform(crs = 4326) %>% 
+    # grab the newly projected coordinates
+    mutate(Longitude = st_coordinates(.)[,1],
+           Latitude = st_coordinates(.)[,2]) %>% 
+    # drop spatial features of the dataframe
+    st_drop_geometry() %>% 
+    # reset the projection column to be the newly projected coordinates
+    mutate(epsg = 4326)
+  
+}) %>% 
+  bind_rows() 
+
+# drop sites that are not in the contiguous US, find these sites by intersecting 
+# our datapoints with the US shapefile, any site that no longer has coordinates, drop
+CONUS_sites_df <- all_spec_transformed_df %>%
+  distinct(site_id, Longitude, Latitude) %>%
+  st_as_sf(coords = c(x = 'Longitude', 
+                      y = 'Latitude'), crs = 4326) %>% 
+  st_join(us_shp %>% 
+            st_transform(4326) %>% 
+            dplyr::select(state_name = 'NAME_1')) %>% 
+  filter(!is.na(state_name)) %>% 
+  mutate(Longitude = st_coordinates(.)[,1],
+         Latitude = st_coordinates(.)[,2]) %>% 
+  st_drop_geometry() %>% 
+  distinct()
+
+# now join
+CONUS_haps_spec_df <- CONUS_sites_df %>% 
+  left_join(all_spec_transformed_df %>% 
+              dplyr::select(-c(Longitude, Latitude)) %>% 
+              distinct(), by= 'site_id') %>% 
+  pivot_longer(cols = c(Cd:Acrolein), names_to = 'species', values_to = 'conc') %>% 
+  left_join(read.csv(haps_xwalk_fp), by = 'species') %>% 
+  filter(!is.na(weight_g_mol)) %>% 
+   # Concentration (µg/m3) = molecular weight x concentration (ppb) ÷ 24.45
+  mutate(conc_ug_m3 = case_when(
+    units == 'Parts per billion Carbon' ~ (conc*weight_g_mol)/24.45,
+    TRUE ~ conc
+  )) %>% 
+  mutate(units = 'ug/m3') %>% 
+  dplyr::select(-conc, -CAS, -IUR, -weight_g_mol) %>% 
+  distinct() %>% 
+  filter(!is.na(conc_ug_m3)) %>% 
+  filter(site_id %in% spec_w_smoke_pm_df$site_id) %>% 
+  pivot_wider(names_from = 'species', values_from = 'conc_ug_m3')
+
+  return(CONUS_haps_spec_df)
+
 } # end function
 

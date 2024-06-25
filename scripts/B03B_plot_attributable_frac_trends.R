@@ -10,12 +10,16 @@ plot_attributable_frac_trends <- function(pred_regional_attributable_preds, spec
   # prep df for plotting
 att_frac <- pred_regional_attributable_preds %>% 
   pivot_wider(names_from = 'label', values_from = 'conc') %>% 
-  mutate(AF = 100*(`Attributable concentration to smoke PM2.5`/`Observed Concentration in Total PM2.5`))  
+  mutate(AF = 100*(`Attributable concentration to smoke PM2.5`/`Observed Concentration in Total PM2.5`))  %>% 
+  filter(AF > 0) %>% 
+  mutate(AF = ifelse(AF > 100, 100, AF))
+
 
 anno <- att_frac %>% 
   distinct(species, sig, year_trend) %>% 
-  mutate(label = paste0(round(year_trend*100, digits = 2), '%')) %>% 
-  mutate(label_sig = paste0(label, "-", sig))
+  mutate(label = paste0(round(year_trend*100, digits = 1), '%')) %>% 
+  mutate(label_sig = paste0(label, "-", sig)) %>% 
+  filter(sig != 'cannot detect increase')
 
 df <- att_frac %>% 
   left_join(anno)
@@ -26,20 +30,19 @@ limits = c(
   # "Organics"
   "Organic Carbon (OC)", "Elemental Carbon (EC)",
   # "Halogens"
-  "Bromine (Br)", "Chlorine (Cl)", "Chloride (Chl)",
+  "Bromine (Br)", "Chlorine (Cl)", "Chloride (Chl)", 
   #  "Nonmetals"
-  "Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Phosphorus (P)", "Selenium (Se)",
+  "Phosphorus (P)","Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Selenium (Se)", 
   # "Other metals"
   "Titanium (Ti)", "Aluminum (Al)", "Lead (Pb)",
   # "Metalloids"
   "Silicon (Si)", "Arsenic (As)",
   # "Transition metals"
-  "Zinc (Zn)", "Manganese (Mn)",  "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
+  "Manganese (Mn)", "Zinc (Zn)", "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
   # "Alkali metals"
   "Potassium (K)", "Rubidium (Rb)", "Sodium (Na)",
   # "Alkaline-earth metals"
-  "Strontium (Sr)","Calcium (Ca)",  "Magnesium (Mg)"
-)
+  "Strontium (Sr)","Calcium (Ca)",  "Magnesium (Mg)")
 
 # # PLOTTING
 att_frac_plot <- ggplot(df) +
@@ -47,16 +50,16 @@ att_frac_plot <- ggplot(df) +
                    y = AF,
                    fill = species_type,
                    color = species_type),
-               stat = "identity", alpha = 0.8) +
+               stat = "identity", alpha = 0.6) +
   labs(y = "% of concentration attributable to wildfire smoke",
        x = "") +
   scale_x_date(labels = date_format("%Y"), breaks = as.Date(datebreaks, format = "%Y-%m-%d")) +
   geom_hline(aes(yintercept = 0)) +
   # add trend line
-  # geom_smooth(aes(x = mon_yr, y = AF, group = species_long),
-  #             method = "lm", se = FALSE, color = "grey10", linewidth = .5) +
+  geom_smooth(aes(x = mon_yr, y = AF, group = species_long),
+              method = "lm", se = FALSE, color = "black", alpha = .6, linewidth = .3) +
   geom_text(aes(x = as.Date('2015-01-01'), y = 50, label = paste(label, "/ year")),
-            vjust = -0.5, hjust = 1, color = "grey30", size = 3, fontface = "plain") + 
+            vjust = -0.5, hjust = 1, color = "black", size = 3, fontface = "plain") + 
   theme_minimal() +
   scale_color_manual(values = spec_pal, 
                      limits = rev(c("Organics",
@@ -93,9 +96,9 @@ att_frac_plot
 
 # save file
 ggsave(
-  filename = 'Fig4_attributable_fraction_trend.png',
+  filename = 'Fig3_attributable_fraction_trend.png',
   plot = att_frac_plot,
-  path = file.path(results_fp, 'figures/Fig4'),
+  path = file.path(results_fp, 'figures/Fig3'),
   scale = 1,
   width = 12,
   height = 8,
@@ -103,9 +106,9 @@ ggsave(
 
 # save file
 ggsave(
-  filename = 'Fig4_attributable_fraction_trend.pdf',
+  filename = 'Fig3_attributable_fraction_trend.pdf',
   plot = att_frac_plot,
-  path = file.path(results_fp, 'figures/Fig4'),
+  path = file.path(results_fp, 'figures/Fig3'),
   scale = 1,
   width = 12,
   height = 8,

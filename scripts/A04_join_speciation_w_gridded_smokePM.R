@@ -47,7 +47,7 @@ join_speciation_w_gridded_smokePM <- function(CONUS_spec_df, pm_fp, grid_fp) {
     # drop extra vars
     dplyr::select(-c(AQSCode, grid_id_10km)) %>% 
     distinct()
-  
+
 
   return(spec_w_smoke_pm_df)
 }

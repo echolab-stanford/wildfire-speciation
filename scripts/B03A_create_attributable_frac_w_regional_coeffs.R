@@ -3,13 +3,14 @@
 # Description: make a time series plot for each species
 
 # grid_fp = file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')
-# loadd(c(parameter_categories, pm_pal, clean_PMspec_df, full_samplePM_df,
-#         regionalPMcoeffs_normalized), cache = drake::drake_cache(".drake"))
+# loadd(c(parameter_categories, pm_pal, clean_PMspec_df,
+#         regionalPMcoeffs_normalized, full_samplePM_df), 
+#       cache = drake::drake_cache(".drake"))
 
 # function
 create_attributable_frac_w_regional_coeffs <- function(grid_fp, clean_PMspec_df, parameter_categories, 
                                                        pm_pal, full_samplePM_df, regionalPMcoeffs_normalized) {
-  
+  # read in grid
   grid_10km <- st_read(grid_fp) %>%
     st_transform(4326)
   
@@ -39,7 +40,7 @@ create_attributable_frac_w_regional_coeffs <- function(grid_fp, clean_PMspec_df,
     dplyr::select(-ZR, -SOIL)
   
   # parellelize
-  plan(multisession)
+  future::plan(multisession)
   
   # ------------------------------------------------------------------
   # REGIONAL ANALYSIS ----------------------------------------
@@ -61,26 +62,30 @@ create_attributable_frac_w_regional_coeffs <- function(grid_fp, clean_PMspec_df,
     pivot_longer(cols = c(AL:ZN), names_to ='species', values_to = 'conc_val') %>%
     filter(!is.na(conc_val)) %>%
     left_join(coeffs, by = c('region', 'species')) %>%
+    # filter(nonsmokePM_MF >= 0 & smokePM >= 0) %>% 
     mutate(pred_spec_nonsmoke = est_nonsmokePM_MF*nonsmokePM_MF,
            pred_spec_smoke = est_smokePM*smokePM) %>%
+    # filter(pred_spec_smoke >= 0 & pred_spec_nonsmoke >= 0) %>% 
     mutate(pred_spec_allPM = pred_spec_smoke + pred_spec_nonsmoke) %>% 
     # make sure we know which grid cell the monitors are in
-    left_join(sites_w_grid_cells)
-  
+    left_join(sites_w_grid_cells) 
+    
+  rm(grid_10km, points, coeffs)
   print(paste('merging predictions and concentration for all days'))
   # add to full dataset before averaging, need all days not just smoke days  
   pred_conc_all_days <- full_samplePM_df %>% 
     left_join(predicted_spec_smoke_conc %>%
                 dplyr::select(Dataset, region, year, month, Date, site_id, grid_id_10km, 
                               species, species_name, pred_spec_nonsmoke, pred_spec_smoke, pred_spec_allPM),
-              by = c("Date","grid_id_10km", "region"))
+              by = c("Date","grid_id_10km", "region")) 
   
   rm(full_samplePM_df, predicted_spec_smoke_conc)
   
   # pivot reg df longer
   obs_species_conc_longer <- reg_df %>% 
     pivot_longer(cols = c(AL:ZN), names_to = 'species', values_to = 'obs_conc') %>% 
-    dplyr::select(region, year, month, monitor_month, Date, site_id, species, obs_conc)
+    dplyr::select(region, year, month, monitor_month, Date, site_id, species, obs_conc) 
+
   
   # join
   increasing_frac_df <- obs_species_conc_longer %>% 
@@ -91,7 +96,7 @@ create_attributable_frac_w_regional_coeffs <- function(grid_fp, clean_PMspec_df,
   calc_frac <- increasing_frac_df %>% 
     mutate(att_frac = pred_spec_smoke/obs_conc) %>% 
     dplyr::select(Date, species, region, year, month, att_frac, site_id, grid_id_10km, monitor_month) %>% 
-    pivot_wider(names_from = 'species', values_from = 'att_frac')
+    pivot_wider(names_from = 'species', values_from = 'att_frac') 
   
   
   # TEST IF THE ATTRIBUTABLE FRACTION IS INCREASING OVER TIME
@@ -101,7 +106,7 @@ create_attributable_frac_w_regional_coeffs <- function(grid_fp, clean_PMspec_df,
                            SE, SI, SO4, SR, TI, V, ZN)
                          ~  year | monitor_month,
                          data = calc_frac, cluster = 'site_id')
-  etable(att_frac_model)
+  # etable(att_frac_model)
   
   ## calculate 95 CI%
   CIs <- confint(att_frac_model) %>% 
@@ -183,27 +188,20 @@ print(paste('averaging preds for each region'))
     # "Organics"
     "Organic Carbon (OC)", "Elemental Carbon (EC)",
     # "Halogens"
-    "Bromine (Br)", "Chlorine (Cl)", "Chloride (Chl)",
+    "Bromine (Br)", "Chlorine (Cl)", "Chloride (Chl)", 
     #  "Nonmetals"
-    "Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Phosphorus (P)", "Selenium (Se)",
+    "Phosphorus (P)","Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Selenium (Se)", 
     # "Other metals"
     "Titanium (Ti)", "Aluminum (Al)", "Lead (Pb)",
     # "Metalloids"
     "Silicon (Si)", "Arsenic (As)",
     # "Transition metals"
-    "Zinc (Zn)", "Manganese (Mn)",  "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
+    "Manganese (Mn)", "Zinc (Zn)", "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
     # "Alkali metals"
     "Potassium (K)", "Rubidium (Rb)", "Sodium (Na)",
     # "Alkaline-earth metals"
-    "Strontium (Sr)","Calcium (Ca)",  "Magnesium (Mg)"
-  )
-  
-  anno <- data.frame(species = unique(plot_df$species), 
-                     year_trend = unique(plot_df$year_trend),
-                     sig = unique(plot_df$sig),
-                     lab = paste0(round(100*unique(plot_df$year_trend), digits = 2), "%"))
-  #anno
-  write.csv(anno, file.path(data_fp, "clean/fig4_annotations_year_trend.csv"))
+    "Strontium (Sr)","Calcium (Ca)",  "Magnesium (Mg)")
+
 
   # # PLOTTING
   avg_mon_pred_spec_plot <- ggplot(plot_df) +
@@ -235,9 +233,9 @@ print(paste('averaging preds for each region'))
 
   # save file
   ggsave(
-    filename = 'Fig4_ALLsmoke_attributable_fraction_trend_regional_model.png',
+    filename = 'SIFig_ALLsmoke_attributable_fraction_trend_regional_model.png',
     plot = avg_mon_pred_spec_plot,
-    path = file.path(results_fp, 'figures/Fig4'),
+    path = file.path(results_fp, 'figures/SI Figs'),
     scale = 1,
     width = 12,
     height = 8,
@@ -245,96 +243,19 @@ print(paste('averaging preds for each region'))
   
   # save file
   ggsave(
-    filename = 'Fig4_ALLsmoke_attributable_fraction_trend_regional_model.pdf',
+    filename = 'SIFig_ALLsmoke_attributable_fraction_trend_regional_model.pdf',
     plot = avg_mon_pred_spec_plot,
-    path = file.path(results_fp, 'figures/Fig4'),
+    path = file.path(results_fp, 'figures/SI Figs'),
     scale = 1,
     width = 12,
     height = 8,
     dpi = 320)
   
+  
+  future::plan(NULL)
+  
   return(plot_df)#
 }
 
   
-
-
-
-# selected_spec_df <- clean_PMspec_df %>% 
-#   mutate(monitor_month = paste0(site_id,"_",month)) %>% 
-#   dplyr::select(Dataset:month, monitor_month,Date, site_id, MF_adj, smokePM, nonsmokePM_MF, AL:ammSO4) #%>% 
-#   # only keep rows that have all values so that its the same selection of sites for the analysis
-#   #na.omit()  
-# 
-# # run the regressions ----------------------------------------------------------
-# V_reg = feols(V ~ smokePM + nonsmokePM_MF | monitor_month + year, selected_spec_df, cluster = 'site_id')
-# PB_reg = feols(PB ~ smokePM + nonsmokePM_MF | monitor_month + year, selected_spec_df, cluster = 'site_id')
-# FE_reg = feols(FE ~ smokePM + nonsmokePM_MF | monitor_month + year, selected_spec_df, cluster = 'site_id')
-# CU_reg = feols(CU ~ smokePM + nonsmokePM_MF | monitor_month + year, selected_spec_df, cluster = 'site_id')
-# CR_reg = feols(CR ~ smokePM + nonsmokePM_MF | monitor_month + year, selected_spec_df, cluster = 'site_id')
-# MN_reg = feols(MN ~ smokePM + nonsmokePM_MF | monitor_month + year, selected_spec_df, cluster = 'site_id')
-# ZN_reg = feols(ZN ~ smokePM + nonsmokePM_MF | monitor_month + year, selected_spec_df, cluster = 'site_id')
-# NI_reg = feols(NI ~ smokePM + nonsmokePM_MF | monitor_month + year, selected_spec_df, cluster = 'site_id')
-# S_reg = feols(S ~ smokePM + nonsmokePM_MF | monitor_month + year, selected_spec_df, cluster = 'site_id')
-# EC_reg = feols(EC ~ smokePM + nonsmokePM_MF | monitor_month + year, selected_spec_df, cluster = 'site_id')
-# OC_reg = feols(OC ~ smokePM + nonsmokePM_MF | monitor_month + year, selected_spec_df, cluster = 'site_id')
-# 
-# 
-# # NOW USE THE RESULTS OF EACH REGRESSION TO PREDICT
-# nonsmoke0_df <- selected_spec_df %>%
-#   # 0 out nonsmoke
-#   mutate(nonsmokePM = 0) 
-# 
-# smoke0_df <- selected_spec_df %>%
-#   # 0 out nonsmoke
-#   mutate(smokePM = 0)
-# 
-# # now predict with new data
-# # predict the smoke concentration
-# predicted_smoke_conc_df <- selected_spec_df %>% 
-#   # this gets the fraction of a species attributable to smoke
-#   mutate(V = predict(V_reg, newdata = nonsmoke0_df)) %>% 
-#   mutate(PB = predict(PB_reg, newdata = nonsmoke0_df)) %>%
-#   mutate(FE = predict(FE_reg, newdata = nonsmoke0_df)) %>%
-#   mutate(CU = predict(CU_reg, newdata = nonsmoke0_df)) %>%
-#   mutate(CR = predict(CR_reg, newdata = nonsmoke0_df)) %>%
-#   mutate(MN = predict(MN_reg, newdata = nonsmoke0_df)) %>%
-#   mutate(ZN = predict(ZN_reg, newdata = nonsmoke0_df)) %>%
-#   mutate(NI = predict(NI_reg, newdata = nonsmoke0_df)) %>%
-#   mutate(S = predict(S_reg, newdata = nonsmoke0_df)) %>%
-#   mutate(EC = predict(EC_reg, newdata = nonsmoke0_df)) %>%
-#   mutate(OC = predict(OC_reg, newdata = nonsmoke0_df)) %>% 
-#   pivot_longer(cols = AL:ammSO4, 
-#                names_to = 'species', 
-#                values_to = 'smoke_conc') 
-#  
-# # now predict with new data
-# predicted_nonsmoke_conc_df <- selected_spec_df %>% 
-#   # this gets the fraction of a species attributable to nonsmoke
-#   mutate(V = predict(V_reg, newdata = smoke0_df)) %>% 
-#   mutate(PB = predict(PB_reg, newdata = smoke0_df)) %>%
-#   mutate(FE = predict(FE_reg, newdata = smoke0_df)) %>%
-#   mutate(CU = predict(CU_reg, newdata = smoke0_df)) %>%
-#   mutate(CR = predict(CR_reg, newdata = smoke0_df)) %>%
-#   mutate(MN = predict(MN_reg, newdata = smoke0_df)) %>%
-#   mutate(ZN = predict(ZN_reg, newdata = smoke0_df)) %>%
-#   mutate(NI = predict(NI_reg, newdata = smoke0_df)) %>%
-#   mutate(S = predict(S_reg, newdata = smoke0_df)) %>%
-#   mutate(EC = predict(EC_reg, newdata = smoke0_df)) %>%
-#   mutate(OC = predict(OC_reg, newdata = smoke0_df)) %>% 
-#   # pivot longer
-#   pivot_longer(cols = AL:ammSO4, 
-#                names_to = 'species', 
-#                values_to = 'nonsmoke_conc')
-# 
-# # calculate total concentration in PM2.5 
-# predicted_concs <- predicted_smoke_conc_df %>% 
-#   left_join(predicted_nonsmoke_conc_df) %>% 
-#   filter(nonsmoke_conc > 0) %>% 
-#   filter(smoke_conc > 0) %>% 
-#   mutate(tot_pred_conc = nonsmoke_conc + smoke_conc)
-
-
-
-
 
