@@ -3,7 +3,7 @@
 # Description: create a map of the different monitoring stations
 
 # loadd(clean_PMspec_df, cache = drake_cache)
-# us_states_fp = file.path(gdrive_data_fp, 'boundaries/all_national_states.rds')
+# us_states_fp = file.path(data_fp, 'raw/all_national_states.rds')
 
 # create a map of CSN vs improve sites
 
@@ -67,7 +67,7 @@ create_map_of_monitoring_stations <- function(clean_PMspec_df, us_states_fp) {
   
   mon_map
   
-  ggsave(file.path(results_fp, "figures/Fig1/Fig1A_monitor_stn_map_raw.pdf"), 
+  ggsave(file.path(results_fp, "Fig1/Fig1A_monitor_stn_map_raw.pdf"), 
          plot = mon_map, dpi = 320, width = 7, height = 6)
   
   
@@ -92,7 +92,7 @@ create_map_of_monitoring_stations <- function(clean_PMspec_df, us_states_fp) {
   
   mon_map_no_duration
   
-  ggsave(file.path(results_fp, "figures/Fig1/Fig1A_monitor_stn_map_NO_DURATION.png"), 
+  ggsave(file.path(results_fp, "Fig1/Fig1A_monitor_stn_map_NO_DURATION.png"), 
          plot = mon_map_no_duration, dpi = 320, width = 7, height = 6)
   
   # # ste up palatte

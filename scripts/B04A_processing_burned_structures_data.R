@@ -3,10 +3,10 @@
 # Description: processing burned structures dataset
 
 # inputs:
-globfire_fp <- file.path(data_fp, 'intermediate/globfire/globfire_na_final_area_2006-2020.shp')
-mtbs_fp <- file.path(data_fp, 'intermediate/mtbs/mtbs_perims_DD.shp')
-nifc_fp <- file.path(data_fp, "intermediate/fire_locations/WFIGS_-_Wildland_Fire_Locations_Full_History.csv")
-damaged_struct_fp <- file.path(data_fp, 'clean/HE_Structures_Destroyed_2022.xlsx')
+# globfire_fp <- file.path(data_fp, 'intermediate/globfire/globfire_na_final_area_2006-2020.shp')
+# mtbs_fp <- file.path(data_fp, 'intermediate/mtbs/mtbs_perims_DD.shp')
+# nifc_fp <- file.path(data_fp, "intermediate/fire_locations/WFIGS_-_Wildland_Fire_Locations_Full_History.csv")
+# damaged_struct_fp <- file.path(data_fp, 'clean/HE_Structures_Destroyed_2022.xlsx')
 
 processing_burned_structures_data <- function(globfire_fp, mtbs_fp, nifc_fp, damaged_struct_fp) {
   

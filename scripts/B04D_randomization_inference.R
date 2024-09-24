@@ -38,7 +38,8 @@ withinAcrossResampler <- function(data, within_condition, across_condition, inte
       ][[interest_var]]
 
       # get num_samples from possible_new_values
-      new_values <- possible_new_values[sample.int(length(possible_new_values), size=num_samples)]
+      new_values <- possible_new_values[sample.int(length(possible_new_values), 
+                                                   size=num_samples)]
 
       inner_dt[[stringr::str_glue('{interest_var}_new')]] <- new_values
 
@@ -57,7 +58,9 @@ permTest <- function(i, outcome, rhs, data, treatment, interest, cluster_err, ac
   ## sample and create new data with shuffled treatment
 
   if(!is.null(sample_group)){
-    new_data <- withinAcrossResampler(data, within_condition=sample_group, across_condition=across_condition,
+    new_data <- withinAcrossResampler(data, 
+                                      within_condition=sample_group, 
+                                      across_condition=across_condition,
                                       interest_var=treatment)
 
   } else{
@@ -88,13 +91,12 @@ DEFAULT_COLOR <- "gray60"
 
 # set up regression dataframe
 reg_df <- burned_struc_smoke_spec_df %>%
-  # filter(Dataset == 'CSN') %>%
   filter(contrib_daily_structures_destroyed > 0) %>%
   #filter(smokePM > 0) %>%
   mutate(monitor_month = paste0(site_id, "-", month))
 
 # Run a regression using your sample
-sample_mod = feols(c(TI, MN,PB, CU, NI, ZN, AS, CR, MG)
+sample_mod = feols(c(TI, MN, PB, CU, NI, ZN, AS, CR, MG)
                    ~ smokePM*contrib_daily_structures_destroyed |
                      monitor_month + year,
                    reg_df, cluster = 'site_id')
@@ -116,9 +118,11 @@ sample_coeffs <- coeftable(sample_mod) %>%
 future::plan(multisession)
 
 start_time <- Sys.time()
+# set seed
+set.seed(123)
 result_df <- lapply(1:1000, permTest,
                     outcome=c('TI', 'MN','PB', 'CU', 'NI', 'ZN', 'AS', 'CR', 'MG'),
-                    rhs="smokePM*contrib_daily_structures_destroyed | monitor_month + year",
+                    rhs="smokePM:contrib_daily_structures_destroyed | monitor_month + year",
                     data=reg_df,
                     treatment=TREATMENT_VAR,
                     interest=INTEREST_VAR,
@@ -129,12 +133,11 @@ result_df <- lapply(1:1000, permTest,
 perm_result_df <- result_df %>%
   left_join(parameter_categories, by ='species')
 
-
-
-
+rm(sample_mod)
 
 end_time <- Sys.time()
 future::plan(NULL)
+
 
 return(perm_result_df)
 }

@@ -4,7 +4,7 @@
 
 # loadd(CONUS_spec_df, cache = drake_cache)
 # pm_fp = file.path(data_fp, 'intermediate/smokePM2pt5_predictions_daily_10km_20060101-20201231.rds')
-# grid_fp = file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')
+# grid_fp = file.path(data_fp, 'intermediate/grid/grid_10km_wgs84.shp')
 
 join_speciation_w_gridded_smokePM <- function(CONUS_spec_df, pm_fp, grid_fp) {
 

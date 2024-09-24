@@ -16,7 +16,7 @@ estimating_conc_response_2_burned_structures <- function(burned_struc_smoke_spec
     filter(!is.na(contrib_daily_structures_destroyed)) %>% 
     dplyr::select(ID, Dataset:site_id, contrib_daily_structures_destroyed,
                   smokePM:ZR, nonsmokePM_MF) %>% 
-    filter_at(vars(AL, AS, BR, CA, CHL, CL, CR, CU,
+    filter_at(vars(AL, AS, BR, CA, CL, CR, CU,
                    EC, FE, K, MG, MN, `NA`, NI, NO3, OC, P, PB,
                    RB, S, SE, SI, SO4, SR, TI, V, ZN, ZR),
               any_vars(!is.na(.))) %>% 
@@ -35,7 +35,7 @@ estimating_conc_response_2_burned_structures <- function(burned_struc_smoke_spec
     )) 
   
 # calculate nonsmoke day baseline
-  no_structures_burned_avg <- burned_struc_smoke_spec_df %>%
+  no_structures_burned_smoke_conc_avg <- burned_struc_smoke_spec_df %>%
     mutate(region = case_when(
       state_name %in% c('Oregon', 'California', 'Washington') ~ 'pacific',
       state_name %in% c('Nevada', 'Utah', 'Colorado', 'Wyoming', 'Montana', 'Idaho') ~ 'rocky_mountain',
@@ -50,7 +50,7 @@ estimating_conc_response_2_burned_structures <- function(burned_struc_smoke_spec
     filter(contrib_daily_structures_destroyed == 0 | is.na(contrib_daily_structures_destroyed)) %>% 
     filter(smokePM > 0) %>% 
     pivot_longer(cols = c(AL:ZR), names_to ='species', values_to = 'conc_val') %>%
-    group_by(species, region) %>%
+    group_by(species) %>%
     dplyr::summarise(avg_no_struc_spec_conc = mean(conc_val, na.rm = TRUE), .groups = 'drop')
   
   # nonsmoke_day_avg <- burned_struc_smoke_spec_df %>%
@@ -64,11 +64,11 @@ estimating_conc_response_2_burned_structures <- function(burned_struc_smoke_spec
     
     # Run a regression using your sample
     # clustered model
-    sample_mod = feols(c(AL,AS,BR, CA, CL, CHL,CR, CU, EC, FE,
+    sample_mod = feols(c(AL,AS,BR, CA, CL, CR, CU, EC, FE,
                          K, MG,MN, `NA`, NI, NO3, OC, P,  PB, RB,
                          S,  SE, SI, SO4, SR, TI, V,  ZN)
                        ~ smokePM*contrib_daily_structures_destroyed |
-                         monitor_month + year, #fsplit=~region,
+                         monitor_month + year, 
                        reg_df, cluster = 'site_id')
     # get coeffs
     sample_coeffs <- coeftable(sample_mod) %>% 
@@ -92,32 +92,32 @@ estimating_conc_response_2_burned_structures <- function(burned_struc_smoke_spec
     
     # merge sample avg for each species and divide each species' betas by full sample avg for each species
     burned_struc_coeffs_normalized <- sample_coeffs %>% 
-      left_join(no_structures_burned_avg, by = 'species') %>% 
-      mutate(no_struc_smoke_est = Estimate/avg_no_struc_spec_conc, # how much a species has changed relative to its baseline
-             no_struc_smoke_CI25 = CI25/avg_no_struc_spec_conc,
-             no_struc_smoke_CI975 = CI975/avg_no_struc_spec_conc) %>% 
+      left_join(no_structures_burned_smoke_conc_avg, by = 'species') %>% 
+      mutate(pct_change_struct_vs_nostruct = 100*(Estimate/avg_no_struc_spec_conc), # how much a species has changed relative to its baseline
+             pct_change_CI25 = 100*(CI25/avg_no_struc_spec_conc),
+             pct_change_CI975 = 100*(CI975/avg_no_struc_spec_conc)) %>% 
       dplyr::select(species, coefficient, species_name, species_long, species_type, Estimate, CI25, CI975,
-                    avg_no_struc_spec_conc, no_struc_smoke_est, no_struc_smoke_CI25, no_struc_smoke_CI975)
+                    avg_no_struc_spec_conc, pct_change_struct_vs_nostruct, pct_change_CI25, pct_change_CI975)
     
     limits <- c("Magnesium (Mg)", "Chromium (Cr)", "Nickel (Ni)", 
-                "Copper (Cu)", "Zinc (Zn)", "Manganese (Mn)",
-                "Arsenic (As)", "Lead (Pb)", "Titanium (Ti)")
+                "Copper (Cu)", "Titanium (Ti)", "Zinc (Zn)", "Manganese (Mn)",
+                "Arsenic (As)", "Lead (Pb)")
           
 
+    
+    
     plot_chems <- burned_struc_coeffs_normalized %>% 
       filter(species %in% c('MG','TI', 'MN','PB', 'CU', 'NI', 'ZN', 'AS', 'CR')) %>% 
       filter(coefficient == 'smokePM:contrib_daily_structures_destroyed')
     
-    avg_burned_structures <- mean(reg_df$contrib_daily_structures_destroyed, na.rm = TRUE)
-    
     # PLOT ALL TOGETHER NO FACETS
     burned_structures_reg_plot <- ggplot(plot_chems,
                                 aes(x = species_long,
-                                    y = 100*no_struc_smoke_est,
+                                    y = pct_change_struct_vs_nostruct,
                                     color = species_type)) +
       geom_point(size=4, alpha = 0.6, stat = "identity", position = position_dodge(width = .8)) +
-      geom_linerange(aes(ymin = (no_struc_smoke_CI25*100),
-                         ymax = (no_struc_smoke_CI975*100)), stat = "identity", position = position_dodge(width = .8)) +
+      geom_linerange(aes(ymin = (pct_change_CI25),
+                         ymax = (pct_change_CI975)), stat = "identity", position = position_dodge(width = .8)) +
      scale_x_discrete(limits = rev(limits)) +
       scale_color_manual(values= c("#35274A", "#E58601", "#E2D200", "#46ACC8")) + 
       geom_hline(yintercept = 0, linetype = "dashed", color = 'grey') +
@@ -142,14 +142,80 @@ estimating_conc_response_2_burned_structures <- function(burned_struc_smoke_spec
     # save file
     ggsave(filename = 'Fig4A_selected_species_smoke_coeff_burned_figs.pdf',
            plot = burned_structures_reg_plot,
-           path = file.path(results_fp, 'figures/Fig4'),
+           path = file.path(results_fp, 'Fig4'),
            scale = 1,
            width = 8,
            height = 10,
            dpi = 320)
     ggsave(filename = 'Fig4A_selected_species_smoke_coeff_burned_figs.png',
            plot = burned_structures_reg_plot,
-           path = file.path(results_fp, 'figures/Fig4'),
+           path = file.path(results_fp, 'Fig4'),
+           scale = 1,
+           width = 8,
+           height = 10,
+           dpi = 320)
+    
+    
+    
+    # PLOT ALL TOGETHER NO FACETS
+    all_coeffs_burned_structures_reg_plot <- ggplot(burned_struc_coeffs_normalized %>% 
+                                           filter(coefficient == 'smokePM:contrib_daily_structures_destroyed'),
+                                         aes(x = species_long,
+                                             y = pct_change_struct_vs_nostruct,
+                                             color = species_type)) +
+      geom_point(size=4, alpha = 0.6, stat = "identity", position = position_dodge(width = .8)) +
+      geom_linerange(aes(ymin = (pct_change_CI25),
+                         ymax = (pct_change_CI975)), stat = "identity", position = position_dodge(width = .8)) +
+      scale_x_discrete(limits = c(
+        # "Organics"
+        "Organic Carbon (OC)", "Elemental Carbon (EC)",
+        # "Halogens"
+        "Bromine (Br)", "Chlorine (Cl)", 
+        #  "Nonmetals"
+        "Phosphorus (P)","Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Selenium (Se)", 
+        # "Other metals"
+        "Aluminum (Al)", "Lead (Pb)",
+        # "Metalloids"
+        "Silicon (Si)", "Arsenic (As)",
+        # "Transition metals"
+        "Manganese (Mn)", "Zinc (Zn)", "Titanium (Ti)","Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
+        # "Alkali metals"
+        "Potassium (K)", "Rubidium (Rb)", "Sodium (Na)",
+        # "Alkaline-earth metals"
+        "Strontium (Sr)","Calcium (Ca)",  "Magnesium (Mg)" 
+      )) +
+      scale_color_manual(values= spec_pal) +
+      #scale_color_manual(values= c("#35274A", "#E58601", "#E2D200", "#46ACC8")) + 
+      geom_hline(yintercept = 0, linetype = "dashed", color = 'grey') +
+      labs(title = 'Effect of an additional structure burned \nper fire per day on species concentrations',
+           y = '% change in concentration relative to no structures burning in smoke PM2.5',
+           x = 'Species',
+           color = 'Species Type',
+      ) +
+      theme_light() +
+      coord_flip()+
+      theme(panel.border = element_blank(),
+            panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+            axis.line = element_line(colour = "black"),
+            title= element_text(size=12, face='bold'),
+            legend.position = "bottom",
+            axis.title.x = element_text(size=11, face = 'plain'),
+            axis.title.y = element_text(size=11, face = 'plain')) +
+      theme(axis.text.y = element_text(angle = 0, hjust = 1)) 
+    all_coeffs_burned_structures_reg_plot
+    
+    
+    # save file
+    ggsave(filename = 'SIFig5_all_species_smoke_coeff_burned_figs.pdf',
+           plot = all_coeffs_burned_structures_reg_plot,
+           path = file.path(results_fp, 'SI Figs'),
+           scale = 1,
+           width = 8,
+           height = 10,
+           dpi = 320)
+    ggsave(filename = 'SIFig5_all_species_smoke_coeff_burned_figs.png',
+           plot = all_coeffs_burned_structures_reg_plot,
+           path = file.path(results_fp, 'Fig4'),
            scale = 1,
            width = 8,
            height = 10,

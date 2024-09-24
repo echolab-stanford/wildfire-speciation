@@ -19,22 +19,25 @@ make_SI_burned_structures_time_series_plot <- function(globfire_structure_joined
     labs(title = "Structures destroyed in wildfires per year",
          x = "Year",
          y = "# of structures destroyed") +
-    theme_minimal()
+    theme_minimal() +
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          axis.line = element_line(color = "black"))
   ts_burned_structures
   
   ggsave(filename = 'SIFig_burned_structures_time_series.pdf',
          plot = ts_burned_structures,
-         path = file.path(results_fp, 'figures/SI Figs'),
+         path = file.path(results_fp, 'SI Figs'),
          scale = 1,
-         width = 4,
+         width = 8,
          height = 4,
          dpi = 320)
   
   ggsave(filename = 'SIFig_burned_structures_time_series.png',
          plot = ts_burned_structures,
-         path = file.path(results_fp, 'figures/SI Figs'),
+         path = file.path(results_fp, 'SI Figs'),
          scale = 1,
-         width = 4,
+         width = 8,
          height = 4,
          dpi = 320)
   

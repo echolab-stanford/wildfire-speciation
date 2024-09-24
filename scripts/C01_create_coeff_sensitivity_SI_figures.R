@@ -33,7 +33,7 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
   #   A) RUN IN LEVELS ACROSS FULL SAMPLE, DIVIDE BETAS BY SAMPLE AVG TO GET % CHANGE RELATIVE TO SAMPLE BASELINE
   # -----------------------------------------------------------------------------
   # run original regression
-  full_sampPM_regMF = feols(c(AL,AS,BR, CA, CL, CHL,CR, CU, EC, FE, 
+  full_sampPM_regMF = feols(c(AL,AS,BR, CA, CL, CR, CU, EC, FE, 
                               K, MG,MN, `NA`, NI, NO3, OC, P,  PB, RB,
                               S,  SE, SI, SO4, SR, TI, V,  ZN)
                             ~ smokePM + nonsmokePM_MF | 
@@ -76,7 +76,7 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
     filter(pm_type == 'smokePM')
   
   # run regression for alternative PM measure ------------------------------
-  sens_analysis = feols(c(AL,AS,BR, CA, CL, CHL,CR, CU, EC, FE,
+  sens_analysis = feols(c(AL,AS,BR, CA, CL, CR, CU, EC, FE,
                           K, MG,MN, `NA`, NI, NO3, OC, P, PB, RB,
                           S,  SE, SI, SO4, SR, TI, V,  ZN)
                         ~ smokePM + nonsmokePM_RCFM | 
@@ -139,15 +139,15 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
       # "Organics"
       "Organic Carbon (OC)", "Elemental Carbon (EC)",
       # "Halogens"
-      "Bromine (Br)", "Chlorine (Cl)", "Chloride (Chl)", 
+      "Bromine (Br)", "Chlorine (Cl)", 
       #  "Nonmetals"
       "Phosphorus (P)","Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Selenium (Se)", 
       # "Other metals"
-      "Titanium (Ti)", "Aluminum (Al)", "Lead (Pb)",
+      "Aluminum (Al)", "Lead (Pb)",
       # "Metalloids"
       "Silicon (Si)", "Arsenic (As)",
       # "Transition metals"
-      "Manganese (Mn)", "Zinc (Zn)", "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
+      "Manganese (Mn)", "Zinc (Zn)", "Titanium (Ti)", "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
       # "Alkali metals"
       "Potassium (K)", "Rubidium (Rb)", "Sodium (Na)",
       # "Alkaline-earth metals"
@@ -176,7 +176,7 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
   ggsave(
     filename = 'SIFig1A_PM_Robustness_checks.pdf',
     plot = PM_robustness,
-    path = file.path(results_fp, 'figures/SI Figs'),
+    path = file.path(results_fp, 'SI Figs'),
     scale = 1,
     width = 5,
     height = 7,
@@ -185,7 +185,7 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
   ggsave(
     filename = 'SIFig1A_PM_Robustness_checks.png',
     plot = PM_robustness,
-    path = file.path(results_fp, 'figures/SI Figs'),
+    path = file.path(results_fp, 'SI Figs'),
     scale = 1,
     width = 5,
     height = 7,
@@ -197,7 +197,7 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
   # RUN REGRESSION WITH AND WITHOUT NONSMOKE + CHANGE MODEL SPECIFICATION
   # -----------------------------------------------------------------------------
   # run regression for alternative PM measure ------------------------------
-  sens_analysis2 = feols(c(AL,AS,BR, CA, CL, CHL,CR, CU, EC, FE,
+  sens_analysis2 = feols(c(AL,AS,BR, CA, CL, CR, CU, EC, FE,
                           K, MG,MN, `NA`, NI, NO3, OC, P, PB, RB,
                           S,  SE, SI, SO4, SR, TI, V,  ZN)
                         ~ smokePM | 
@@ -261,15 +261,15 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
       # "Organics"
       "Organic Carbon (OC)", "Elemental Carbon (EC)",
       # "Halogens"
-      "Bromine (Br)", "Chlorine (Cl)", "Chloride (Chl)", 
+      "Bromine (Br)", "Chlorine (Cl)", 
       #  "Nonmetals"
       "Phosphorus (P)","Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Selenium (Se)", 
       # "Other metals"
-      "Titanium (Ti)", "Aluminum (Al)", "Lead (Pb)",
+       "Aluminum (Al)", "Lead (Pb)",
       # "Metalloids"
       "Silicon (Si)", "Arsenic (As)",
       # "Transition metals"
-      "Manganese (Mn)", "Zinc (Zn)", "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
+      "Manganese (Mn)", "Zinc (Zn)","Titanium (Ti)", "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
       # "Alkali metals"
       "Potassium (K)", "Rubidium (Rb)", "Sodium (Na)",
       # "Alkaline-earth metals"
@@ -299,7 +299,7 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
   ggsave(
     filename = 'SIFig1B_Covariate_Robustness_checks.pdf',
     plot = covariate_robustness,
-    path = file.path(results_fp, 'figures/SI Figs'),
+    path = file.path(results_fp, 'SI Figs'),
     scale = 1,
     width = 5,
     height = 7,
@@ -307,7 +307,7 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
   ggsave(
     filename = 'SIFig1B_Covariate_Robustness_checks.png',
     plot = covariate_robustness,
-    path = file.path(results_fp, 'figures/SI Figs'),
+    path = file.path(results_fp, 'SI Figs'),
     scale = 1,
     width = 5,
     height = 7,
@@ -317,7 +317,7 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
   # RUN DIFFERENT MODEL SPECIFICATIONS
   # -----------------------------------------------------------------------------
   # run regression for alternative PM measure ------------------------------
-  mod1 = feols(c(AL,AS,BR, CA, CL, CHL,CR, CU, EC, FE,
+  mod1 = feols(c(AL,AS,BR, CA, CL, CR, CU, EC, FE,
                            K, MG,MN, `NA`, NI, NO3, OC, P, PB, RB,
                            S,  SE, SI, SO4, SR, TI, V,  ZN)
                          ~ smokePM + nonsmokePM_MF | 
@@ -355,7 +355,7 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
     filter(pm_type == 'smokePM') 
   
   # run regression for alternative PM measure ------------------------------
-  mod2 = feols(c(AL,AS,BR, CA, CL, CHL,CR, CU, EC, FE,
+  mod2 = feols(c(AL,AS,BR, CA, CL, CR, CU, EC, FE,
                  K, MG,MN, `NA`, NI, NO3, OC, P, PB, RB,
                  S,  SE, SI, SO4, SR, TI, V,  ZN)
                ~ smokePM + nonsmokePM_MF | 
@@ -396,7 +396,7 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
   
   
   # run regression for alternative PM measure ------------------------------
-  mod3 = feols(c(AL,AS,BR, CA, CL, CHL,CR, CU, EC, FE,
+  mod3 = feols(c(AL,AS,BR, CA, CL, CR, CU, EC, FE,
                  K, MG,MN, `NA`, NI, NO3, OC, P, PB, RB,
                  S,  SE, SI, SO4, SR, TI, V,  ZN)
                ~ smokePM + nonsmokePM_MF | 
@@ -435,7 +435,7 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
     filter(pm_type == 'smokePM') 
   
   # run regression for alternative PM measure ------------------------------
-  mod4 = feols(c(AL,AS,BR, CA, CL, CHL,CR, CU, EC, FE,
+  mod4 = feols(c(AL,AS,BR, CA, CL, CR, CU, EC, FE,
                  K, MG,MN, `NA`, NI, NO3, OC, P, PB, RB,
                  S,  SE, SI, SO4, SR, TI, V,  ZN)
                ~ smokePM + nonsmokePM_MF | 
@@ -474,7 +474,7 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
     filter(pm_type == 'smokePM') 
   
   
-  mod5 = feols(c(AL,AS,BR, CA, CL, CHL,CR, CU, EC, FE,
+  mod5 = feols(c(AL,AS,BR, CA, CL, CR, CU, EC, FE,
                  K, MG,MN, `NA`, NI, NO3, OC, P, PB, RB,
                  S,  SE, SI, SO4, SR, TI, V,  ZN)
                ~ smokePM + nonsmokePM_MF , reg_df, cluster = 'site_id') 
@@ -546,15 +546,15 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
       # "Organics"
       "Organic Carbon (OC)", "Elemental Carbon (EC)",
       # "Halogens"
-      "Bromine (Br)", "Chlorine (Cl)", "Chloride (Chl)", 
+      "Bromine (Br)", "Chlorine (Cl)",  
       #  "Nonmetals"
       "Phosphorus (P)","Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Selenium (Se)", 
       # "Other metals"
-      "Titanium (Ti)", "Aluminum (Al)", "Lead (Pb)",
+       "Aluminum (Al)", "Lead (Pb)",
       # "Metalloids"
       "Silicon (Si)", "Arsenic (As)",
       # "Transition metals"
-      "Manganese (Mn)", "Zinc (Zn)", "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
+      "Manganese (Mn)", "Zinc (Zn)", "Titanium (Ti)", "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
       # "Alkali metals"
       "Potassium (K)", "Rubidium (Rb)", "Sodium (Na)",
       # "Alkaline-earth metals"
@@ -583,7 +583,7 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
   ggsave(
     filename = 'SIFig1C_ModelSpec_Robustness_checks.pdf',
     plot = specification_robustness,
-    path = file.path(results_fp, 'figures/SI Figs'),
+    path = file.path(results_fp, 'SI Figs'),
     scale = 1,
     width = 5,
     height = 7,
@@ -592,7 +592,7 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
   ggsave(
     filename = 'SIFig1C_ModelSpec_Robustness_checks.png',
     plot = specification_robustness,
-    path = file.path(results_fp, 'figures/SI Figs'),
+    path = file.path(results_fp, 'SI Figs'),
     scale = 1,
     width = 5,
     height = 7,

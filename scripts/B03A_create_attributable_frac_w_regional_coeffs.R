@@ -4,7 +4,7 @@
 
 # grid_fp = file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')
 # loadd(c(parameter_categories, pm_pal, clean_PMspec_df,
-#         regionalPMcoeffs_normalized, full_samplePM_df), 
+#         regionalPMcoeffs_normalized, full_samplePM_df),
 #       cache = drake::drake_cache(".drake"))
 
 # function
@@ -101,7 +101,7 @@ create_attributable_frac_w_regional_coeffs <- function(grid_fp, clean_PMspec_df,
   
   # TEST IF THE ATTRIBUTABLE FRACTION IS INCREASING OVER TIME
   print(paste('running model'))
-  att_frac_model = feols(c(AL,AS,BR,CA,CHL,CL, CR,CU, EC, FE, K, MG, MN, 
+  att_frac_model = feols(c(AL,AS,BR,CA,CL, CR,CU, EC, FE, K, MG, MN, 
                            `NA`, NI, NO3, OC, P, PB, RB, S, 
                            SE, SI, SO4, SR, TI, V, ZN)
                          ~  year | monitor_month,
@@ -188,15 +188,15 @@ print(paste('averaging preds for each region'))
     # "Organics"
     "Organic Carbon (OC)", "Elemental Carbon (EC)",
     # "Halogens"
-    "Bromine (Br)", "Chlorine (Cl)", "Chloride (Chl)", 
+    "Bromine (Br)", "Chlorine (Cl)", 
     #  "Nonmetals"
     "Phosphorus (P)","Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Selenium (Se)", 
     # "Other metals"
-    "Titanium (Ti)", "Aluminum (Al)", "Lead (Pb)",
+     "Aluminum (Al)", "Lead (Pb)",
     # "Metalloids"
     "Silicon (Si)", "Arsenic (As)",
     # "Transition metals"
-    "Manganese (Mn)", "Zinc (Zn)", "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
+    "Manganese (Mn)", "Zinc (Zn)", "Titanium (Ti)", "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
     # "Alkali metals"
     "Potassium (K)", "Rubidium (Rb)", "Sodium (Na)",
     # "Alkaline-earth metals"
@@ -235,7 +235,7 @@ print(paste('averaging preds for each region'))
   ggsave(
     filename = 'SIFig_ALLsmoke_attributable_fraction_trend_regional_model.png',
     plot = avg_mon_pred_spec_plot,
-    path = file.path(results_fp, 'figures/SI Figs'),
+    path = file.path(results_fp, 'SI Figs'),
     scale = 1,
     width = 12,
     height = 8,
@@ -245,7 +245,7 @@ print(paste('averaging preds for each region'))
   ggsave(
     filename = 'SIFig_ALLsmoke_attributable_fraction_trend_regional_model.pdf',
     plot = avg_mon_pred_spec_plot,
-    path = file.path(results_fp, 'figures/SI Figs'),
+    path = file.path(results_fp, 'SI Figs'),
     scale = 1,
     width = 12,
     height = 8,

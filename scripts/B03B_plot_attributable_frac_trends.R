@@ -30,15 +30,15 @@ limits = c(
   # "Organics"
   "Organic Carbon (OC)", "Elemental Carbon (EC)",
   # "Halogens"
-  "Bromine (Br)", "Chlorine (Cl)", "Chloride (Chl)", 
+  "Bromine (Br)", "Chlorine (Cl)", 
   #  "Nonmetals"
   "Phosphorus (P)","Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Selenium (Se)", 
   # "Other metals"
-  "Titanium (Ti)", "Aluminum (Al)", "Lead (Pb)",
+  "Aluminum (Al)", "Lead (Pb)",
   # "Metalloids"
   "Silicon (Si)", "Arsenic (As)",
   # "Transition metals"
-  "Manganese (Mn)", "Zinc (Zn)", "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
+  "Manganese (Mn)", "Zinc (Zn)", "Titanium (Ti)", "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
   # "Alkali metals"
   "Potassium (K)", "Rubidium (Rb)", "Sodium (Na)",
   # "Alkaline-earth metals"
@@ -91,14 +91,16 @@ att_frac_plot <- ggplot(df) +
         panel.grid = element_blank(),
         legend.position = "bottom",
         axis.line.y = element_line(color = "grey10")) +
-  guides(color = 'none')
+  guides(color = 'none') +
+  guides(legend = 'none') +
+  guides(fill = 'none')
 att_frac_plot
 
 # save file
 ggsave(
-  filename = 'Fig3_attributable_fraction_trend.png',
+  filename = 'Fig3_attributable_fraction_trend_alt.png',
   plot = att_frac_plot,
-  path = file.path(results_fp, 'figures/Fig3'),
+  path = file.path(results_fp, 'Fig3'),
   scale = 1,
   width = 12,
   height = 8,
@@ -106,9 +108,9 @@ ggsave(
 
 # save file
 ggsave(
-  filename = 'Fig3_attributable_fraction_trend.pdf',
+  filename = 'Fig3_attributable_fraction_trend_alt.pdf',
   plot = att_frac_plot,
-  path = file.path(results_fp, 'figures/Fig3'),
+  path = file.path(results_fp, 'Fig3'),
   scale = 1,
   width = 12,
   height = 8,

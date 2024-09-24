@@ -33,7 +33,7 @@ spec_ns_samp_avgs_df <- reg_df %>%
 #   A) RUN IN LEVELS ACROSS FULL SAMPLE, DIVIDE BETAS BY SAMPLE AVG TO GET % CHANGE RELATIVE TO SAMPLE BASELINE
 # -----------------------------------------------------------------------------
 # the original list: CR, CU, EC, FE, MN, NI, OC, PB, S, V, ZN
-full_sampPM_regMF = feols(c(AL,AS,BR, CA, CL, CHL,CR, CU, EC, FE, 
+full_sampPM_regMF = feols(c(AL,AS,BR, CA, CL, CR, CU, EC, FE, 
                             K, MG,MN, `NA`, NI, NO3, OC, P,  PB, RB,
                             S,  SE, SI, SO4, SR, TI, V,  ZN)
                           ~ smokePM + nonsmokePM_MF | 
@@ -97,15 +97,15 @@ pct_change_samp_reg_plot <- ggplot(full_samp_PMcoeffs_normalized,
     # "Organics"
     "Organic Carbon (OC)", "Elemental Carbon (EC)",
     # "Halogens"
-    "Bromine (Br)", "Chlorine (Cl)", "Chloride (Chl)", 
+    "Bromine (Br)", "Chlorine (Cl)", 
     #  "Nonmetals"
     "Phosphorus (P)","Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Selenium (Se)", 
     # "Other metals"
-    "Titanium (Ti)", "Aluminum (Al)", "Lead (Pb)",
+    "Aluminum (Al)", "Lead (Pb)",
     # "Metalloids"
     "Silicon (Si)", "Arsenic (As)",
     # "Transition metals"
-    "Manganese (Mn)", "Zinc (Zn)", "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
+    "Manganese (Mn)", "Zinc (Zn)", "Titanium (Ti)","Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
     # "Alkali metals"
     "Potassium (K)", "Rubidium (Rb)", "Sodium (Na)",
     # "Alkaline-earth metals"
@@ -134,7 +134,7 @@ pct_change_samp_reg_plot
 ggsave(
   filename = 'Fig2_pct_change_PM_spec_smokeMF_all_chems_raw.pdf',
   plot = pct_change_samp_reg_plot,
-  path = file.path(results_fp, 'figures/Fig2'),
+  path = file.path(results_fp, 'Fig2'),
   scale = 1,
   width = 7,
   height = 10,
@@ -143,7 +143,7 @@ ggsave(
 ggsave(
   filename = 'Fig2_pct_change_PM_spec_smokeMF_all_chems_raw.png',
   plot = pct_change_samp_reg_plot,
-  path = file.path(results_fp, 'figures/Fig2'),
+  path = file.path(results_fp, 'Fig2'),
   scale = 1,
   width = 7,
   height = 10,
@@ -165,15 +165,15 @@ LOGall_species_smoke_plot <- ggplot(full_sampPM_coeffsMF %>%
     # "Organics"
     "Organic Carbon (OC)", "Elemental Carbon (EC)",
     # "Halogens"
-    "Bromine (Br)", "Chlorine (Cl)", "Chloride (Chl)", 
+    "Bromine (Br)", "Chlorine (Cl)", 
     #  "Nonmetals"
     "Phosphorus (P)","Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Selenium (Se)", 
     # "Other metals"
-    "Titanium (Ti)", "Aluminum (Al)", "Lead (Pb)",
+     "Aluminum (Al)", "Lead (Pb)",
     # "Metalloids"
     "Silicon (Si)", "Arsenic (As)",
     # "Transition metals"
-    "Manganese (Mn)", "Zinc (Zn)", "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
+    "Manganese (Mn)", "Zinc (Zn)", "Titanium (Ti)", "Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
     # "Alkali metals"
     "Potassium (K)", "Rubidium (Rb)", "Sodium (Na)",
     # "Alkaline-earth metals"
@@ -212,7 +212,7 @@ LOGall_species_smoke_plot
 ggsave(
   filename = 'Fig2_PM_MF_spec_log_coeffs.pdf',
   plot = LOGall_species_smoke_plot,
-  path = file.path(results_fp, 'figures/Fig2'),
+  path = file.path(results_fp, 'Fig2'),
   scale = 1,
   width = 8,
   height = 10,
@@ -221,7 +221,7 @@ ggsave(
 ggsave(
   filename = 'Fig2_PM_MF_spec_log_coeffs.png',
   plot = LOGall_species_smoke_plot,
-  path = file.path(results_fp, 'figures/Fig2'),
+  path = file.path(results_fp, 'Fig2'),
   scale = 1,
   width = 8,
   height = 10,

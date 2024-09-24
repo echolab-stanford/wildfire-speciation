@@ -4,8 +4,12 @@
 # and smoke
 
 # inputs:
-# loadd(c(globfire_structure_joined_df,CONUS_spec_sites_df, clean_PMspec_df, clean_PMspec_sites_df), cache = drake_cache)
-# grid_fp = file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')
+# loadd(c(globfire_structure_joined_df,
+#         CONUS_spec_sites_df,
+#         clean_PMspec_df,
+#         clean_PMspec_sites_df),
+#       cache = drake_cache)
+# grid_fp = file.path(data_fp, 'intermediate/grid/grid_10km_wgs84.shp')
 
 # FUNCTION
 merge_burned_structures_w_speciation <- function(globfire_structure_joined_df,clean_PMspec_sites_df, 
@@ -21,7 +25,6 @@ grid_transform <- st_read(grid_fp) %>%
 ## monitor location lat lon merge to get gridcell id
 monitor_location_df <- clean_PMspec_sites_df %>%
   st_as_sf(coords=c("long","lat"), crs=4326, agr="constant") %>%
-  # st_transform("epsg:5070") %>%
   st_join(grid_transform)
 
 ## merge monitor location/gridcell with readings data
@@ -33,7 +36,7 @@ monitor_reading_df <- clean_PMspec_df %>%
               dplyr::select(site_id, ID, COORDX, COORDY),
             by=c("site_id"))
 
-# get all smokepm files at 10km
+# get all smokepm files at 30km
 fire_files_list <- list.files(
   file.path(data_fp, 'intermediate/fire_smokepm/30km'),
   full.names = TRUE)
@@ -84,18 +87,11 @@ grid_smoke_structure_dt <- gridcell_smokepm_dt %>%
             contrib_daily_structures_destroyed=sum(contrib_daily_structures_destroyed, na.rm=T)) %>% 
   ungroup()
 
-## aggregate by monitor-day to calc weighted avg. of structures burned, weighted avg. of soil characteristics
+# aggregate by monitor-day to calc weighted avg. of structures burned, weighted avg. of soil characteristics
 merged_smoke_spec_burned_structures_df <- monitor_reading_df %>% 
   left_join(grid_smoke_structure_dt %>%
               dplyr::select(ID, month, year, Date ='date', contrib_smokePM, contrib_daily_structures_destroyed),
-            by=c("ID","month","year","Date")) #%>% 
-  # filter(!is.na(contrib_daily_structures_destroyed)) %>% 
-  # dplyr::select(ID, Dataset:site_id, contrib_daily_structures_destroyed,
-  #               smokePM:ZR, nonsmokePM_MF) %>% 
-  # filter_at(vars(AL, AS, BR, CA, CHL, CL, CR, CU,
-  #                EC, FE, K, MG, MN, `NA`, NI, NO3, OC, P, PB,
-  #                RB, S, SE, SI, SO4, SR, TI, V, ZN, ZR),
-  #           any_vars(!is.na(.))) 
+            by=c("ID","month","year","Date")) 
 
 future::plan(NULL)
 

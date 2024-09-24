@@ -1,8 +1,8 @@
 # Emma Krasovich Southworth, emmars@stanford.edu
 # Last Updated: April 17, 2023
 # Description: run full sample new regression model for gridded data for each species
-
-# grid_fp = file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')
+# 
+# grid_fp = file.path(data_fp, 'intermediate/grid/grid_10km_wgs84.shp')
 # loadd(c(clean_PMspec_df, parameter_categories, full_samplePM_df), cache = drake_cache)
 
 
@@ -45,7 +45,7 @@ run_pixel_regression_and_plot_5yr_maps <- function(clean_PMspec_df, parameter_ca
   reg_df <- clean_PMspec_df %>% 
     dplyr::select(Dataset, year, month, monitor_month, Date,
                     site_id, MF_adj, smokePM, nonsmokePM_MF,
-                    AS, PB, NI, long, lat) %>% 
+                    AS, NI, PB, long, lat) %>% 
     left_join(sites_w_grid_cells,
               by = c("Dataset", "site_id")) 
   
@@ -63,7 +63,7 @@ run_pixel_regression_and_plot_5yr_maps <- function(clean_PMspec_df, parameter_ca
   # RUN REGRESSION FOR SPECIES
   # -----------------------------------------------------------------------------
   # lat long regression model-
-  latlong_model = feols(c(AS, PB, NI) ~ smokePM + smokePM*lat + smokePM*long +  smokePM*long*lat |
+  latlong_model = feols(c(AS, NI,PB) ~ smokePM + smokePM*lat + smokePM*long +  smokePM*long*lat |
                             monitor_month + year,
                           data = reg_df,
                           cluster = 'site_id')
@@ -119,7 +119,9 @@ run_pixel_regression_and_plot_5yr_maps <- function(clean_PMspec_df, parameter_ca
     ))
     
     # save current species predictions
-    # write.fst(current_preds_df, file.path(data_fp, paste0('clean/', current_species, '_gridded_preds.fst')))
+    # write_fst(current_preds_df, file.path(data_fp, paste0('clean/', current_species, '_gridded_preds.fst')), compress = 100)
+
+    
     rm(gridded_PM_all_days)
     # ------------------------------------------------------------------------
     # DATA CHECK - make sure the betas added up seem reasonable when compared to regional model
@@ -138,55 +140,7 @@ run_pixel_regression_and_plot_5yr_maps <- function(clean_PMspec_df, parameter_ca
     
     rm(current_preds_df) # drop to save memory
     
-    # PLOT!!!!!!!!!!!!!!!!
-    if (current_species == 'PB') {
-      current_pred_map <- ggplot() +
-        geom_sf(data = sample_avg_predictions %>%
-                  left_join(grid_10km %>% 
-                              dplyr::select(grid_id_10km = 'ID', geometry), 
-                            by ='grid_id_10km') %>% 
-                  st_as_sf(), 
-                aes(color = avg_grid_conc, 
-                    fill = avg_grid_conc)) +  
-        scale_colour_viridis_c(option = "mako", direction = -1) +
-        scale_fill_viridis_c(option = "mako", direction = -1) +
-        facet_wrap(~samp_period) +
-        theme_minimal() +  # Apply a minimal theme
-        theme(
-          panel.grid.major = element_blank(),  # Remove major grid lines
-          panel.grid.minor = element_blank(),  # Remove minor grid lines
-          axis.text = element_blank(),  # Remove axis labels
-          axis.title = element_text(),  # Remove axis titles
-          legend.title = element_text(),
-          plot.title = element_text(face = "bold"),
-          legend.key.width = unit(.4, "cm"),  # Set the legend key width
-          legend.key.height = unit(.4, "cm")  # Set the legend key height
-        ) +
-        labs(title = paste0(current_species),
-             color = paste0('Concentration (ug/m3)')) +
-        guides(fill = 'none')
-      # Specify the order for the legend
-      
-      # current_pred_map
-      ggsave(
-        filename = paste0('Fig5A_continuous_gridded_predictions', current_species, '_conc.png'),
-        plot = current_pred_map,
-        path = file.path(results_fp, 'figures/Fig5'),
-        scale = 1,
-        width = 12,
-        height = 8,
-        dpi = 320)
-      ggsave(
-        filename = paste0('Fig5A_continuous_gridded_predictions', current_species, '_conc.pdf'),
-        plot = current_pred_map,
-        path = file.path(results_fp, 'figures/Fig5'),
-        scale = 1,
-        width = 12,
-        height = 8,
-        dpi = 320)
-      
-    } 
-    
+    # # PLOT!!!!!!!!!!!!!!!!
     # change color scale based on 
     if (current_species == 'AS') {
       current_pred_map <- ggplot() +
@@ -219,7 +173,7 @@ run_pixel_regression_and_plot_5yr_maps <- function(clean_PMspec_df, parameter_ca
       ggsave(
         filename = paste0('Fig5A_continuous_gridded_predictions', current_species, '_conc.png'),
         plot = current_pred_map,
-        path = file.path(results_fp, 'figures/Fig5'),
+        path = file.path(results_fp, 'Fig5'),
         scale = 1,
         width = 12,
         height = 8,
@@ -227,12 +181,12 @@ run_pixel_regression_and_plot_5yr_maps <- function(clean_PMspec_df, parameter_ca
       ggsave(
         filename = paste0('Fig5A_continuous_gridded_predictions', current_species, '_conc.pdf'),
         plot = current_pred_map,
-        path = file.path(results_fp, 'figures/Fig5'),
+        path = file.path(results_fp, 'Fig5'),
         scale = 1,
         width = 12,
         height = 8,
         dpi = 320)
-      
+  
     }
     
     if (current_species == 'NI') {
@@ -266,7 +220,7 @@ run_pixel_regression_and_plot_5yr_maps <- function(clean_PMspec_df, parameter_ca
       ggsave(
         filename = paste0('Fig5A_continuous_gridded_predictions', current_species, '_conc.png'),
         plot = current_pred_map,
-        path = file.path(results_fp, 'figures/Fig5'),
+        path = file.path(results_fp, 'Fig5'),
         scale = 1,
         width = 12,
         height = 8,
@@ -274,18 +228,22 @@ run_pixel_regression_and_plot_5yr_maps <- function(clean_PMspec_df, parameter_ca
       ggsave(
         filename = paste0('Fig5A_continuous_gridded_predictions', current_species, '_conc.pdf'),
         plot = current_pred_map,
-        path = file.path(results_fp, 'figures/Fig5'),
+        path = file.path(results_fp, 'Fig5'),
         scale = 1,
         width = 12,
         height = 8,
         dpi = 320)
     }
       
-      sample_avg_predictions
+      sample_avg_preds <- sample_avg_predictions %>% 
+        dplyr::select(-long_grid, -lat_grid) %>% 
+        left_join(grid_10km %>% 
+                    rename(grid_id_10km = 'ID'), 
+                  by = 'grid_id_10km')
       # End the parallel session
       future::plan(NULL)
 
-    return(sample_avg_predictions)
+    return(sample_avg_preds)
   }
 
 

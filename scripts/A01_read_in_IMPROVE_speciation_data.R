@@ -5,10 +5,10 @@
 
 
 # testing function
-# improve_spec_file_list = list.files(file.path(wip_gdrive_fp, 'raw'), pattern = 'IMPAER', full.names = TRUE)
-# improve_site_fp = file.path(wip_gdrive_fp, 'raw/IMPROVE_sites.xlsx')
-# aqs_sites_fp = file.path(wip_gdrive_fp, 'raw/aqs_sites.csv')
-# aqs_monitors_fp = file.path(wip_gdrive_fp, 'raw/aqs_monitors.csv')
+# improve_spec_file_list = list.files(file.path(data_fp, 'raw'), pattern = 'IMPAER', full.names = TRUE)
+# improve_site_fp = file.path(data_fp, 'raw/IMPROVE_sites.xlsx')
+# aqs_sites_fp = file.path(data_fp, 'raw/aqs_sites.csv')
+# aqs_monitors_fp = file.path(data_fp, 'raw/aqs_monitors.csv')
 
 # FUNCTION
 read_in_IMPROVE_specation_data <- function(improve_spec_file_list, 
@@ -20,7 +20,7 @@ read_in_IMPROVE_specation_data <- function(improve_spec_file_list,
 # read in improve speciation files and clean up
   
 # testing one file at a time
-# current_file <- improve_spec_file_list[23]
+# current_file <- improve_spec_file_list[3]
 
 # read each in file, clean up, and merge all speciation data from IMPROVE together
 improve_spec_files = map_df(improve_spec_file_list, function(current_file) {
@@ -28,20 +28,21 @@ improve_spec_files = map_df(improve_spec_file_list, function(current_file) {
   # print current index
   print(paste0("current index is: ", match(current_file, unique(improve_spec_file_list)), ' of ', length(improve_spec_file_list)))
   
-  temp_spec_df <- read.table(current_file, sep = "|", header= TRUE) %>% 
+  temp_spec_df <- read.csv(current_file, 
+                             sep = "|", 
+                             header= TRUE) %>% 
     dplyr::select(SiteCode, Date = 'FactDate', ParamCode, conc = 'FactValue', Units) %>% 
     mutate(ParamCode = str_remove(ParamCode, pattern = 'f$')) %>% 
     filter(Units == 'ug/m^3') %>% 
+    filter(conc != '-999') %>% 
+    mutate(conc = as.numeric(conc)) %>% 
     group_by(SiteCode, Date, ParamCode, Units) %>% 
     dplyr::summarise(conc = mean(conc, na.rm = TRUE), .groups = 'drop') %>% 
     # pivot wide again so that each monitor-day has one value for each measured species
     pivot_wider(id_cols = c('SiteCode', 'Date', 'Units'), 
                 names_from = 'ParamCode', 
-                values_from = 'conc') %>% 
-    dplyr::select(SiteCode, Date, units = 'Units', MF, RCFM, AL, AS, BR, CA, 
-                  CHL, CL, CR, CU, EC, FE, K, MG, MN, N2, 
-                  `NA`, NI, NO3, OC, P, PB, RB, S, SE, SI, SO4, SOIL, SR, 
-                  TI, V, ZN, ZR, ammNO3, ammSO4)
+                values_from = 'conc') 
+    
 }) %>% 
   bind_rows()
 
@@ -127,7 +128,7 @@ raw_IMPROVE_spec_df <- improve_spec_files %>%
   filter(!is.na(Latitude)) %>% 
   mutate(Dataset = 'IMPROVE') %>% 
   dplyr::select(Dataset, st_name, AQSCode, site_id, 
-                lat = 'Latitude', long = 'Longitude', epsg, Date, units,
+                lat = 'Latitude', long = 'Longitude', epsg, Date, Units,
     MF, RCFM, AL, AS, BR, CA, CHL, CL, CR, CU, EC, 
     FE, K, MG, MN, N2, `NA`,NI, NO3, OC, P, PB, RB, 
     S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR, ammNO3, ammSO4

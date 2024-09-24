@@ -1,7 +1,7 @@
 # Description to explore data + compare to Kara's
 
 # load the cleaned data
-loadd(pm_spec4data_exp, cache = drake::drake_cache("scripts/.drake"))
+# loadd(pm_spec4data_exp, cache = drake::drake_cache("scripts/.drake"))
 
 # read in state shapefile for mapping -----
 us_states <- st_read(file.path(wip_gdrive_fp, 'raw/cb_2018_us_state_500k/cb_2018_us_state_500k.shp')) %>% 

@@ -21,11 +21,6 @@ final_speciation_cleaning_pre_analysis <- function(spec_w_smoke_pm_df) {
                     EC, FE, K, MG, MN, `NA`, NI, NO3, OC, P, PB,
                     RB, S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR),
               any_vars(!is.na(.))) %>%
-    # change any 0 value in the data to NA, except for smoke data
-    # mutate_at(vars(AL, AS, BR, CA, CHL, CL, CR, CU,
-    #                EC, FE, K, MG, MN, `NA`, NI, NO3, OC, P, PB,
-    #                RB, S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR),
-    #           ~ifelse(. == 0, NA, .)) %>%
     mutate(year = year(Date),
            month = month(Date),
            doy = yday(Date)) %>% 
@@ -78,7 +73,7 @@ final_speciation_cleaning_pre_analysis <- function(spec_w_smoke_pm_df) {
     dplyr::select(Dataset, state_name, region, season, year, month, doy, 
                   duration, st_date, end_date, monitor_month, Date, site_id, smoke_day, 
                   MF_adj, RCFM_adj, smokePM = 'smokePM2.5', nonsmokePM_MF, nonsmokePM_RCFM,
-                  AL, AS, BR, CA, CHL, CL, CR, CU,
+                  AL, AS, BR, CA, CL, CR, CU,
                   EC, FE, K, MG, MN, `NA`, NI, NO3, OC, P, PB,
                   RB, S, SE, SI, SO4, SOIL, SR, TI, V, ZN, ZR, units, 
                   long, lat, epsg, MF, RCFM)

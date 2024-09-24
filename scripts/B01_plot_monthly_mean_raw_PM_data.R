@@ -71,7 +71,7 @@ avg_mon_PM_plot
 ggsave(
   filename = 'Fig1B_avg_monthlyPM_raw.pdf',
   plot = avg_mon_PM_plot,
-  path = file.path(results_fp, 'figures/Fig1'),
+  path = file.path(results_fp, 'Fig1'),
   scale = 1,
   width = 8,
   height = 6,

@@ -3,9 +3,9 @@
 # Description: This script creates the full universe of days in our sample from 2006-2020, adds in smoke PM
 # and then matches each grid cell with region
 
-# us_states_fp = file.path(boundaries_fp, 'all_national_states.rds')
 # pm_fp = file.path(data_fp, 'intermediate/smokePM2pt5_predictions_daily_10km_20060101-20201231.rds')
-# grid_fp = file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')
+# grid_fp = file.path(data_fp, 'intermediate/grid/grid_10km_wgs84.shp')
+# us_states_fp = file.path(data_fp, 'raw/all_national_states.rds')
 # loadd(us_region_map, cache = drake_cache)
 
 # to do - get grid cells in each region and then predict
