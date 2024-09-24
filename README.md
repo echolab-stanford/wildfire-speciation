@@ -1,8 +1,8 @@
 # wildfire-speciation
 project looking at how wildfire smoke affects pm2.5 composition
 
+[Pre-print](https://eartharxiv.org/repository/view/7545/)
 
-[Project Dropbox](https://www.dropbox.com/work/Projects/wildfire-speciation)
-
-[Paper Draft](https://www.overleaf.com/project/609181ee7f20301688b1f7a5)
+[Abstract] 
+Wildfires are a significant contributor to ambient air pollution, yet our understanding of how wildfire smoke influences specific chemicals and their resulting concentration in smoke remains incomplete. We combine 15 years of daily species-specific PM$_{2.5}$ concentrations from 700 air pollution monitors with satellite-derived estimates of ambient wildfire smoke PM$_{2.5}$, and use panel regression to estimate the contribution of wildfire smoke to the concentrations of 27 different chemical species in PM$_{2.5}$. Wildfire smoke drives detectable increases in the concentration of 25 of the 27 species, with the largest increases for organic carbon, elemental carbon, and potassium. We find that smoke originating from wildfires that burned structures had higher concentrations of copper, lead, zinc, and nickel relative to smoke from fires that did not burn structures. Wildfire smoke is responsible for an increasing share of ambient species concentrations for multiple species, especially in the Western US. Using a risk assessment approach, we find that wildfire enhancement of carcinogenic species concentrations could cause increases in population cancer risk, but these increases are very small relative to other risk factors. We demonstrate that  ground monitors in combination with satellite-derived data can measure how wildfire smoke influences chemical concentrations at large scales and estimate population-level exposures. 
 
