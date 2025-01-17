@@ -206,14 +206,14 @@ estimating_conc_response_2_burned_structures <- function(burned_struc_smoke_spec
     
     
     # save file
-    ggsave(filename = 'SIFig5_all_species_smoke_coeff_burned_figs.pdf',
+    ggsave(filename = 'SIFig8_all_species_smoke_coeff_burned_figs.pdf',
            plot = all_coeffs_burned_structures_reg_plot,
            path = file.path(results_fp, 'SI Figs'),
            scale = 1,
            width = 8,
            height = 10,
            dpi = 320)
-    ggsave(filename = 'SIFig5_all_species_smoke_coeff_burned_figs.png',
+    ggsave(filename = 'SIFig8_all_species_smoke_coeff_burned_figs.png',
            plot = all_coeffs_burned_structures_reg_plot,
            path = file.path(results_fp, 'Fig4'),
            scale = 1,

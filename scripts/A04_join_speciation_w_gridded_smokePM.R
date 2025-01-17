@@ -42,7 +42,7 @@ join_speciation_w_gridded_smokePM <- function(CONUS_spec_df, pm_fp, grid_fp) {
     # match PM2.5 from the smoke_pm dataset by gridcell
     left_join(smoke_pm, 
               by = c("grid_id_10km", "Date")) %>% 
-    # Replace NA values (non-smoke days) to 0 (no smoke detected)
+    # Replace NA values (non-smoke days) to 0 (which would mean no smoke detected)
     mutate(smokePM2.5 = ifelse(is.na(smokePM_pred), 0, smokePM_pred)) %>% 
     # drop extra vars
     dplyr::select(-c(AQSCode, grid_id_10km)) %>% 

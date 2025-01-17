@@ -37,9 +37,15 @@ full_sampPM_regMF = feols(c(AL,AS,BR, CA, CL, CR, CU, EC, FE,
                             K, MG,MN, `NA`, NI, NO3, OC, P,  PB, RB,
                             S,  SE, SI, SO4, SR, TI, V,  ZN)
                           ~ smokePM + nonsmokePM_MF | 
-                            monitor_month + year, reg_df, cluster = 'site_id') 
-
+                            monitor_month + year, reg_df, cluster = 'site_id')
 # etable(full_sampPM_regMF) # look at regression results
+
+# test_OC = feols(OC ~ monitor_month + year, reg_df, cluster = 'site_id') 
+# etable(test_OC)
+# 
+# test_OC_w_terms = feols(OC ~ smokePM + nonsmokePM_MF | monitor_month + year, reg_df, cluster = 'site_id') 
+# etable(test_OC_w_terms)
+
 
 ## calculate 95 CI%
 CIs <- confint(

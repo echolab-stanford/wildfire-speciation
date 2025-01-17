@@ -3,8 +3,7 @@
 # # # Description: run regression on burned structures and smoke speciation + plot response curves at different levels of smoke
 #
 # loadd(c(burned_struc_smoke_spec_df, parameter_categories), cache = drake_cache)
-#
-#
+
 # ----------------------------------------------------------------
 #  RUN PERMUTATION TEST TO TEST SHARP NULL
 # ----------------------------------------------------------------
@@ -131,7 +130,9 @@ result_df <- lapply(1:1000, permTest,
   bind_rows()
 
 perm_result_df <- result_df %>%
-  left_join(parameter_categories, by ='species')
+  left_join(sample_coeffs %>% 
+              filter(coefficient == 'smokePM:contrib_daily_structures_destroyed') %>% 
+              dplyr::select(species, obs_est = 'Estimate', pval))
 
 rm(sample_mod)
 

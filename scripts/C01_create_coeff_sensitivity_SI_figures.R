@@ -174,7 +174,7 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
   
   # save file
   ggsave(
-    filename = 'SIFig1A_PM_Robustness_checks.pdf',
+    filename = 'SIFig2A_PM_Robustness_checks.pdf',
     plot = PM_robustness,
     path = file.path(results_fp, 'SI Figs'),
     scale = 1,
@@ -183,7 +183,7 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
     dpi = 320) 
   
   ggsave(
-    filename = 'SIFig1A_PM_Robustness_checks.png',
+    filename = 'SIFig2A_PM_Robustness_checks.png',
     plot = PM_robustness,
     path = file.path(results_fp, 'SI Figs'),
     scale = 1,
@@ -297,7 +297,7 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
   
   # save file
   ggsave(
-    filename = 'SIFig1B_Covariate_Robustness_checks.pdf',
+    filename = 'SIFig2C_Covariate_Robustness_checks.pdf',
     plot = covariate_robustness,
     path = file.path(results_fp, 'SI Figs'),
     scale = 1,
@@ -305,7 +305,7 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
     height = 7,
     dpi = 320) 
   ggsave(
-    filename = 'SIFig1B_Covariate_Robustness_checks.png',
+    filename = 'SIFig2C_Covariate_Robustness_checks.png',
     plot = covariate_robustness,
     path = file.path(results_fp, 'SI Figs'),
     scale = 1,
@@ -581,7 +581,7 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
   
   # save file
   ggsave(
-    filename = 'SIFig1C_ModelSpec_Robustness_checks.pdf',
+    filename = 'SIFig2B_ModelSpec_Robustness_checks.pdf',
     plot = specification_robustness,
     path = file.path(results_fp, 'SI Figs'),
     scale = 1,
@@ -590,7 +590,7 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
     dpi = 320) 
   
   ggsave(
-    filename = 'SIFig1C_ModelSpec_Robustness_checks.png',
+    filename = 'SIFig2B_ModelSpec_Robustness_checks.png',
     plot = specification_robustness,
     path = file.path(results_fp, 'SI Figs'),
     scale = 1,
@@ -598,7 +598,201 @@ create_coeff_sensitivity_SI_figures <- function(clean_PMspec_df, parameter_categ
     height = 7,
     dpi = 320) 
   
-  sensitivity_checks_coeffs <- bind_rows(all_coeffs, all_coeffs2, all_coeffs_mods)
+  # ----------------------------------------------------------------------------
+  # R1, Q2: VALIDATE OUR MODEL BY INCLUDING ADDITIONAL ENVIRONMENTAL COVARIATES
+  # ----------------------------------------------------------------------------
+  # read in precipation data from CHIRPS
+  ppt_files <- list.files(file.path(gee_data_fp), pattern = 'precip', full.names = TRUE)
+  # current_fp <- ppt_files[1]
+  
+  ppt_df <- map_df(ppt_files, function(current_fp) {
+    
+    current_df <- read.csv(current_fp) %>% 
+      dplyr::select(grid_id_10km = 'ID', ppt_mm_per_day = 'sum') %>% 
+      mutate(year = gsubfn::strapply(current_fp, "\\d{4}", as.numeric, simplify = TRUE))
+    
+  })
+  
+  # read in temperature data from ERA5
+  temp_files <- list.files(file.path(gee_data_fp), pattern = 'temp', full.names = TRUE)
+  # current_fp <- temp_files[1]
+  
+  temp_df <- map_df(temp_files, function(current_fp) {
+    
+    current_df <- read.csv(current_fp) %>% 
+      dplyr::select(grid_id_10km = 'ID', temp = 'mean_2m_air_temperature') %>% 
+      mutate(year = gsubfn::strapply(current_fp, "\\d{4}", as.numeric, simplify = TRUE)) %>% 
+      mutate(tempF = weathermetrics::kelvin.to.fahrenheit(temp, round = 2))
+    
+  })
+  
+  covar_df <-  left_join(temp_df, ppt_df) %>% 
+    dplyr::select(-temp)
+  
+  # load these datasets
+  loadd(c(clean_PMspec_df,clean_PMspec_sites_df, parameter_categories), cache = drake_cache)
+  
+  # Load 10 km grid
+  grid_10km <- st_read(file.path(data_fp, 'intermediate/grid/grid_10km_wgs84.shp')) %>% 
+    st_transform(4326)
+  
+  # Match monitor locations in speciation data with grid 10km ID ####
+  # pull id cells that intersect with the monitoring sites
+  pts_in_grid_df <- clean_PMspec_sites_df %>% 
+    st_as_sf(coords = c('long', 'lat'), crs = 4326) %>% 
+    st_join(grid_10km) %>% 
+    st_drop_geometry() %>% 
+    rename(grid_id_10km = 'ID') %>% 
+    dplyr::select(-epsg, -COORDX, -COORDY)
+  
+  # Add grid_id_10km to the speciation df, join the smoke PM data by grid cell
+  station_gridded_df <- clean_PMspec_df %>% 
+    left_join(pts_in_grid_df, 
+              by = c("site_id", 'Dataset')) %>% 
+    left_join(covar_df) %>% 
+    dplyr::select(Dataset:region, year, month, Date, 
+                  monitor_month, grid_id_10km, smoke_day, site_id, 
+                  tempF, ppt_mm_per_day, MF_adj, smokePM, 
+                  nonsmokePM_MF, AL:ZN) %>% 
+    # drop Soil and zirconium, not needed for this analysis
+    dplyr::select(-SOIL)
+  
+  # GET BASELINE AVERAGES FOR EACH SPECIES --------------------------------
+  # calculate the baseline for each chemical species across full sample by filtering to nonsmoke days
+  # rather than all days, bc some places may be really smoky 
+  # relative to others 
+  spec_ns_samp_avgs_df <- station_gridded_df %>% 
+    dplyr::select(site_id, Date, AL:ZN, smoke_day) %>% 
+    pivot_longer(cols = c(AL:ZN), names_to ='species', values_to = 'conc_val') %>% 
+    filter(smoke_day == 'nonsmoke day') %>% 
+    group_by(species) %>% 
+    dplyr::summarise(avg_nonsmoke_spec_conc = mean(conc_val, na.rm = TRUE), .groups = 'drop')
+  
+  
+  # RUN REGRESSION FOR SPECIES -------------------------------------------------
+  # RUN IN LEVELS ACROSS FULL SAMPLE, 
+  # DIVIDE BETAS BY SAMPLE AVG TO GET % CHANGE RELATIVE TO SAMPLE BASELINE
+  
+  covar_reg = feols(c(AL,AS,BR, CA, CL, CR, CU, EC, FE, 
+                      K, MG,MN, `NA`, NI, NO3, OC, P,  PB, RB,
+                      S,  SE, SI, SO4, SR, TI, V,  ZN)
+                    ~ smokePM + nonsmokePM_MF + tempF + ppt_mm_per_day | 
+                      monitor_month + year, station_gridded_df, cluster = 'site_id')
+  # summary(covar_reg) # look at regression results
+  ## calculate 95 CI%
+  CIs <- confint(
+    covar_reg) %>% 
+    rename(species = 'lhs',
+           pm_type = 'coefficient',
+           CI25 = '2.5 %',
+           CI975 = '97.5 %') %>% 
+    mutate(measure = 'MF') %>% 
+    dplyr::select(-id)
+  
+  # get coefficients and prepare for plotting
+  covar_coeffs <- coeftable(covar_reg) %>% 
+    rename(pval = 'Pr(>|t|)',
+           se = 'Std. Error',
+           species = 'lhs',
+           pm_type = 'coefficient') %>% 
+    mutate(pval = round(pval, digits = 4)) %>% 
+    # get pvalues
+    mutate(sig = ifelse(pval > .05, 'non-significant', 'significant')) %>% 
+    dplyr::select(-id)  %>% 
+    left_join(parameter_categories, by = 'species') %>% 
+    mutate(species_type = fct_relevel(species_type,
+                                      c("Alkaline-earth metals", "Alkali metals", 
+                                        "Transition metals", "Metalloids", "Other metals", 
+                                        "Nonmetals",  "Halogens", "Organics"))
+    ) %>% 
+    mutate(measure = 'MF') %>% 
+    left_join(CIs, by = c('species', 'pm_type', 'measure'))
+  
+  
+  # merge sample avg for each species and divide each species' betas by full sample avg for each species
+  covar_coeffs_normalized <- covar_coeffs %>% 
+    left_join(spec_ns_samp_avgs_df, by = 'species') %>% 
+    mutate(norm_est = Estimate/avg_nonsmoke_spec_conc, # how much a species has changed relative to its baseline
+           norm_CI25 = CI25/avg_nonsmoke_spec_conc,
+           norm_CI975 = CI975/avg_nonsmoke_spec_conc) %>% 
+    filter(pm_type == 'smokePM') %>% 
+    mutate(model_type = 'environmental covariates included')
+  
+  # load the original coefficients
+  loadd(spec_pal, full_samp_PMcoeffs_normalized)
+  
+  og_coeffs <- full_samp_PMcoeffs_normalized %>% 
+    mutate(model_type = 'no environmental covariates')
+  
+  # add together:
+  env_coeffs_coeffs <- bind_rows(covar_coeffs_normalized, og_coeffs)
+  
+  # plot percent change for all species ------------------------------------------
+  pct_change_env_cov_plot <- ggplot(env_coeffs_coeffs, 
+                                     aes(x = species_long,
+                                         y = 100*norm_est, 
+                                         color=model_type,
+                                     )) +
+    geom_point(size=3, alpha = 0.6, stat = "identity") +
+    geom_linerange(aes(ymin = (100*norm_CI25), 
+                       ymax = (100*norm_CI975)), stat = "identity") +
+    scale_x_discrete(limits = c(
+      # "Organics"
+      "Organic Carbon (OC)", "Elemental Carbon (EC)",
+      # "Halogens"
+      "Bromine (Br)", "Chlorine (Cl)", 
+      #  "Nonmetals"
+      "Phosphorus (P)","Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Selenium (Se)", 
+      # "Other metals"
+      "Aluminum (Al)", "Lead (Pb)",
+      # "Metalloids"
+      "Silicon (Si)", "Arsenic (As)",
+      # "Transition metals"
+      "Manganese (Mn)", "Zinc (Zn)", "Titanium (Ti)","Iron (Fe)", "Copper (Cu)", "Vanadium (V)", "Nickel (Ni)", "Chromium (Cr)",
+      # "Alkali metals"
+      "Potassium (K)", "Rubidium (Rb)", "Sodium (Na)",
+      # "Alkaline-earth metals"
+      "Strontium (Sr)","Calcium (Ca)",  "Magnesium (Mg)" 
+    )) +
+    scale_color_manual(values= c('lightgreen', 'forestgreen')) +
+    coord_flip() +
+    geom_hline(yintercept = 0, linetype = "dashed", color = 'grey') +
+    labs(y = expression(paste('% change relative to average nonsmoke day concentration')),
+         x = 'Species',
+         shape = 'Model inclusions',
+         title = expression(paste("% change in concentration for 1 ug/", m^3, " increase in smoke ", "PM"["2.5"]))) + 
+    theme_light() + 
+    theme(panel.border = element_blank(), 
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+          axis.line = element_line(colour = "black"),
+          title= element_text(size=12, face='bold'),
+          axis.title.x = element_text(size=11, face = 'plain'),
+          axis.title.y = element_text(size=11, face = 'plain')) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = 'grey50')
+  pct_change_env_cov_plot
+  
+  
+  # save file
+  ggsave(
+    filename = 'SIFig2D_EnvCov_Robustness_checks.png',
+    plot = pct_change_env_cov_plot,
+    path = file.path(results_fp, 'SI Figs'),
+    scale = 1,
+    width = 7,
+    height = 7,
+    dpi = 320)  
+  
+  ggsave(
+    filename = 'SIFig2D_EnvCov_Robustness_checks.pdf',
+    plot = pct_change_env_cov_plot,
+    path = file.path(results_fp, 'SI Figs'),
+    scale = 1,
+    width = 7,
+    height = 7,
+    dpi = 320) 
+  
+  
+  sensitivity_checks_coeffs <- bind_rows(all_coeffs, all_coeffs2, all_coeffs_mods, env_coeffs_coeffs)
 
   
   return(sensitivity_checks_coeffs)

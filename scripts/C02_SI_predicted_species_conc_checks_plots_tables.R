@@ -1,8 +1,4 @@
-# Emma Krasovich Southworth, emmars@stanford.edu
-# Last Updated: April 6, 2023
-# Description: make a time series plot for each species
-
-# grid_fp = file.path(data_fp, 'intermediate/10km_grid_wgs84.shp')
+# grid_fp = file.path(data_fp, 'intermediate/grid/grid_10km_wgs84.shp')
 # loadd(c(parameter_categories, pm_pal, clean_PMspec_df,
 #         regionalPMcoeffs_normalized, full_samplePM_df),
 #       cache = drake::drake_cache(".drake"))
@@ -47,7 +43,7 @@ create_attributable_frac_w_regional_coeffs <- function(grid_fp, clean_PMspec_df,
   # ------------------------------------------------------------------
   coeffs <- regionalPMcoeffs_normalized %>% 
     dplyr::select(region, species, species_name, pm_type, Estimate) %>% 
-  pivot_wider(names_from = 'pm_type', names_prefix = "est_", values_from = 'Estimate')
+    pivot_wider(names_from = 'pm_type', names_prefix = "est_", values_from = 'Estimate')
   
   rm(regionalPMcoeffs_normalized)
   
@@ -69,9 +65,10 @@ create_attributable_frac_w_regional_coeffs <- function(grid_fp, clean_PMspec_df,
     mutate(pred_spec_allPM = pred_spec_smoke + pred_spec_nonsmoke) %>% 
     # make sure we know which grid cell the monitors are in
     left_join(sites_w_grid_cells) 
-    
+  
   rm(grid_10km, points, coeffs)
   print(paste('merging predictions and concentration for all days'))
+  
   # add to full dataset before averaging, need all days not just smoke days  
   pred_conc_all_days <- full_samplePM_df %>% 
     left_join(predicted_spec_smoke_conc %>%
@@ -81,31 +78,68 @@ create_attributable_frac_w_regional_coeffs <- function(grid_fp, clean_PMspec_df,
   
   rm(full_samplePM_df, predicted_spec_smoke_conc)
   
-  # pivot reg df longer
+  # pivot reg df longer to prep for regression
   obs_species_conc_longer <- reg_df %>% 
     pivot_longer(cols = c(AL:ZN), names_to = 'species', values_to = 'obs_conc') %>% 
     dplyr::select(region, year, month, monitor_month, Date, site_id, species, obs_conc) 
-
   
   # join
-  increasing_frac_df <- obs_species_conc_longer %>% 
+  pred_obs_joined_df <- obs_species_conc_longer %>% 
     left_join(pred_conc_all_days, 
               by = c('species', 'Date', 'year', 'month', 'site_id', "region"))
   
-  # calc fraction
-  calc_frac <- increasing_frac_df %>% 
+  # # run model to determine if the concentration in absolute terms (aka levels)
+  # # is significantly increasing over time
+  # pred_smoke_levels_df <-pred_obs_joined_df %>% 
+  #   # select only predicted concentrations in smoke
+  #   dplyr::select(Date, species, region, year, month, pred_spec_smoke, site_id, grid_id_10km, monitor_month) %>% 
+  #   pivot_wider(names_from = 'species', values_from = 'pred_spec_smoke') 
+  # 
+  # print(paste('running model for smoke levels'))
+  # reg_est_trends = feols(c(AL,AS,BR,CA,CL, CR,CU, EC, FE, K, MG, MN, 
+  #                                  `NA`, NI, NO3, OC, P, PB, RB, S, 
+  #                                  SE, SI, SO4, SR, TI, V, ZN)
+  #                                ~  year | monitor_month,
+  #                                data = pred_smoke_levels_df, cluster = 'site_id', fsplit = ~region)
+  # # etable(reg_est_trends)
+  # summary(reg_est_trends)
+  # 
+  # 
+  # ## calculate 95 CI%
+  # CIs <- confint(reg_est_trends) %>% 
+  #   rename(CI25 = `2.5 %`,
+  #          CI975 = `97.5 %`,
+  #          species = 'lhs') %>% 
+  #   dplyr::select(-id, -sample.var, -coefficient)
+  # 
+  # # get coefficients and prepare for plotting
+  # coeffs <- coeftable(reg_est_trends) %>%
+  #   rename(pval = 'Pr(>|t|)',
+  #          se = 'Std. Error',
+  #          species = 'lhs',
+  #          coeff = 'Estimate') %>%
+  #   mutate(pval = round(pval, digits = 3)) %>%
+  #   dplyr::select(-id, -coefficient, -sample.var) %>%
+  #   left_join(CIs, by = c('species', 'sample')) 
+  # 
+  
+  
+  # ATTRIBUTABLE FRACTION
+  # calc fraction and determine if the fraction of species concentration attributable to wildfire
+  # is significantly increasing over time
+  calc_frac <- pred_obs_joined_df %>% 
     mutate(att_frac = pred_spec_smoke/obs_conc) %>% 
     dplyr::select(Date, species, region, year, month, att_frac, site_id, grid_id_10km, monitor_month) %>% 
     pivot_wider(names_from = 'species', values_from = 'att_frac') 
   
   
   # TEST IF THE ATTRIBUTABLE FRACTION IS INCREASING OVER TIME
-  print(paste('running model'))
+  print(paste('running model for fraction'))
   att_frac_model = feols(c(AL,AS,BR,CA,CL, CR,CU, EC, FE, K, MG, MN, 
                            `NA`, NI, NO3, OC, P, PB, RB, S, 
                            SE, SI, SO4, SR, TI, V, ZN)
                          ~  year | monitor_month,
-                         data = calc_frac, cluster = 'site_id')
+                         data = calc_frac, cluster = 'site_id', fsplit = ~region)
   # etable(att_frac_model)
   
   ## calculate 95 CI%
@@ -113,38 +147,38 @@ create_attributable_frac_w_regional_coeffs <- function(grid_fp, clean_PMspec_df,
     rename(CI25 = `2.5 %`,
            CI975 = `97.5 %`,
            species = 'lhs') %>% 
-    dplyr::select(-id)
+    dplyr::select(-id, -sample.var, -coefficient)
   
   # get coefficients and prepare for plotting
-  coeffs <- coeftable(att_frac_model) %>%
+  coeffs <- coeftable(reg_est_trends) %>%
     rename(pval = 'Pr(>|t|)',
            se = 'Std. Error',
            species = 'lhs',
            coeff = 'Estimate') %>%
     mutate(pval = round(pval, digits = 3)) %>%
-    dplyr::select(-id) %>%
-    left_join(CIs, by = c('species', 'coefficient')) %>% 
+    dplyr::select(-id, -coefficient, -sample.var) %>%
+    left_join(CIs, by = c('species', 'sample')) %>% 
     mutate(sig = ifelse(pval < .05, "sig increasing", "cannot detect increase"))
   
-rm(att_frac_model)
-
-print(paste('averaging preds for each region'))
-
+  rm(att_frac_model)
+  
+  print(paste('averaging preds for each region'))
+  
   # combine all days with predicted dataset
   avg_conc_site_month_yr <- pred_conc_all_days %>%
-  # calculate avg attributable fraction of species concentration to total concentration
+    # calculate avg attributable fraction of species concentration to total concentration
     # get avg concentration across all sites for a given month and year
     group_by(region, species, year, month, site_id) %>%
     dplyr::summarise(avg_smoke_conc = mean(pred_spec_smoke, na.rm = TRUE),
                      avg_nonsmoke_conc = mean(pred_spec_nonsmoke, na.rm = TRUE),
                      avg_tot_conc = mean(pred_spec_allPM, na.rm = TRUE)) %>%
     ungroup() %>%
-    group_by(species, year, month) %>%
-    dplyr::summarise(avg_smoke_conc = mean(avg_smoke_conc, na.rm = TRUE),
-                     avg_nonsmoke_conc = mean(avg_nonsmoke_conc, na.rm = TRUE),
-                     avg_tot_conc = mean(avg_tot_conc, na.rm = TRUE)) %>%
-    ungroup()
-
+    group_by(species, year, month) # %>%
+    # dplyr::summarise(avg_smoke_conc = mean(avg_smoke_conc, na.rm = TRUE),
+    #                  avg_nonsmoke_conc = mean(avg_nonsmoke_conc, na.rm = TRUE),
+    #                  avg_tot_conc = mean(avg_tot_conc, na.rm = TRUE)) %>%
+    # ungroup()
+  
   # get monthly avg conc for the observed "total concentration" of a species
   obs_improve_monthly_mean <- reg_df %>%
     dplyr::select(Dataset, region, year, month, Date,
@@ -156,24 +190,24 @@ print(paste('averaging preds for each region'))
     ungroup() %>%
     group_by(region,species, year, month) %>%
     dplyr::summarise(avg_obs_tot_conc = mean(avg_obs_tot_conc, na.rm = TRUE)) %>%
-    ungroup() %>%
-    group_by(species, year, month) %>%
-    dplyr::summarise(avg_obs_tot_conc = mean(avg_obs_tot_conc, na.rm = TRUE)) %>%
-    ungroup()
-
+    ungroup() # %>%
+    # group_by(species, year, month) %>%
+    # dplyr::summarise(avg_obs_tot_conc = mean(avg_obs_tot_conc, na.rm = TRUE)) %>%
+    # ungroup()
+  
   # now merge back with predicted data
   print(paste('merging predictions with observed data'))
   avg_attributable_fraction_vs_obs <- avg_conc_site_month_yr %>%
     left_join(obs_improve_monthly_mean, 
-              by = c('species', 'year', 'month'))
-
+              by = c('species', 'year', 'month', 'region'))
+  
   # # prep df for plotting
   plot_df <- avg_attributable_fraction_vs_obs %>%
     dplyr::select(-avg_obs_tot_conc, -avg_nonsmoke_conc, -avg_tot_conc) %>%
     mutate(label = 'Attributable concentration to smoke PM2.5') %>%
     rename(conc = 'avg_smoke_conc') %>%
     bind_rows(avg_attributable_fraction_vs_obs %>%
-                dplyr::select(conc = 'avg_obs_tot_conc', year, month, species) %>%
+                dplyr::select(conc = 'avg_obs_tot_conc', year, month, species, region) %>%
                 mutate(label = 'Observed Concentration in Total PM2.5')) %>%
     mutate(mon_yr = as.Date(paste0(year, "-", month, "-", "01"), format = "%Y-%m-%d")) %>%
     left_join(parameter_categories, by = 'species') %>%
@@ -183,7 +217,7 @@ print(paste('averaging preds for each region'))
     left_join(coeffs %>% rename(year_trend = 'coeff'), by = 'species')
   
   datebreaks <- seq(as.Date("2006-01-01"), as.Date("2020-12-01"), by = "24 month")
-
+  
   limits = c(
     # "Organics"
     "Organic Carbon (OC)", "Elemental Carbon (EC)",
@@ -192,7 +226,7 @@ print(paste('averaging preds for each region'))
     #  "Nonmetals"
     "Phosphorus (P)","Sulfur (S)", "Sulfate (SO4)",  "Nitrate (NO3)", "Selenium (Se)", 
     # "Other metals"
-     "Aluminum (Al)", "Lead (Pb)",
+    "Aluminum (Al)", "Lead (Pb)",
     # "Metalloids"
     "Silicon (Si)", "Arsenic (As)",
     # "Transition metals"
@@ -201,16 +235,17 @@ print(paste('averaging preds for each region'))
     "Potassium (K)", "Rubidium (Rb)", "Sodium (Na)",
     # "Alkaline-earth metals"
     "Strontium (Sr)","Calcium (Ca)",  "Magnesium (Mg)")
-
-
-  # # PLOTTING
-  avg_mon_pred_spec_plot <- ggplot(plot_df) +
+  
+  
+  # PLOTTING
+  avg_mon_pred_spec_plot <- ggplot(plot_df %>% 
+                                     filter(region == "pacific")) +
     geom_density(aes(x = mon_yr,
                      y = conc,
                      fill = label,
                      color = label),
                  stat = "identity", alpha = 0.8) +
-    labs(title = expression("Chemical species concentration attributable to wildfire smoke PM2.5"),
+    labs(title = expression("Chemical species concentration attributable to wildfire smoke PM2.5 in the Pacific"),
          y = expression("Concentration (\u00b5g/m"^3*")"),
          x = "") +
     scale_x_date(labels = date_format("%Y"), breaks = as.Date(datebreaks, format = "%Y-%m-%d")) +
@@ -230,10 +265,10 @@ print(paste('averaging preds for each region'))
           legend.position = "bottom",
           axis.line.y = element_line(color = "grey10"))
   avg_mon_pred_spec_plot
-
+  
   # save file
   ggsave(
-    filename = 'SIFig_ALLsmoke_attributable_fraction_trend_regional_model.png',
+    filename = 'SIFig_PACIFIC_smoke_attributable_fraction_trend_regional_model.png',
     plot = avg_mon_pred_spec_plot,
     path = file.path(results_fp, 'SI Figs'),
     scale = 1,
@@ -243,7 +278,7 @@ print(paste('averaging preds for each region'))
   
   # save file
   ggsave(
-    filename = 'SIFig_ALLsmoke_attributable_fraction_trend_regional_model.pdf',
+    filename = 'SIFig_PACIFIC_smoke_attributable_fraction_trend_regional_model.pdf',
     plot = avg_mon_pred_spec_plot,
     path = file.path(results_fp, 'SI Figs'),
     scale = 1,
@@ -257,5 +292,5 @@ print(paste('averaging preds for each region'))
   return(plot_df)#
 }
 
-  
+
 

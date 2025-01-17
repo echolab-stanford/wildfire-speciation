@@ -4,8 +4,61 @@
 
 # loadd(c(globfire_structure_joined_df, burned_struc_smoke_spec_df, parameter_categories), cache = drake_cache)
 
-make_SI_burned_structures_time_series_plot <- function(globfire_structure_joined_df, burned_struc_smoke_spec_df) {
+make_SI_burned_structures_time_series_plot <- function(
+    globfire_structure_joined_df, 
+    burned_struc_smoke_spec_df, 
+    us_region_map, 
+    reg_pal) {
   
+  # create a spatial object for structures burned and determine where the structures were burning in our time series
+  struct_burned_sf <- globfire_structure_joined_df %>% 
+    st_as_sf(coords = c(x = 'BurnBndLon', y = 'BurnBndLat'), crs = 4326) 
+  
+  # intersect with us regions to determine how many structures burned in each region
+  int_bs_region_sf <- st_intersection(us_region_map, struct_burned_sf) %>% 
+    st_drop_geometry() %>% 
+    dplyr::select(st_ab, st_name, region, year, structures_destroyed)
+  
+  # agg by region
+  agg_df <- int_bs_region_sf %>% 
+    distinct(year, region, structures_destroyed) %>% 
+    group_by(region, year) %>% 
+    tally(structures_destroyed)
+  
+  # Plotting by region
+  ts_burned_structures_region <- ggplot(agg_df, aes(x = year, y = n, color = region)) +
+    geom_line() +
+    facet_wrap(~region) +
+    scale_color_manual(values = region_pal) +
+    labs(title = "Structures destroyed in wildfires per year by region",
+         x = "Year",
+         y = "# of structures destroyed") +
+    theme_minimal() +
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          axis.line = element_line(color = "black")) +
+    guides(color = FALSE)
+  ts_burned_structures_region
+  
+
+  ggsave(filename = 'SIFig_burned_structures_time_series_by_region.png',
+         plot = ts_burned_structures_region,
+         path = file.path(results_fp, 'SI Figs'),
+         scale = 1,
+         width = 8,
+         height = 4,
+         dpi = 320)
+  
+  ggsave(filename = 'SIFig_burned_structures_time_series_by_region.pdf',
+         plot = ts_burned_structures_region,
+         path = file.path(results_fp, 'SI Figs'),
+         scale = 1,
+         width = 8,
+         height = 4,
+         dpi = 320)
+  
+  
+  # not by region
   agg_df <- globfire_structure_joined_df %>% 
     ungroup() %>% 
     st_drop_geometry() %>% 

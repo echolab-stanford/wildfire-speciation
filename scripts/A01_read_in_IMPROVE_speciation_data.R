@@ -90,7 +90,7 @@ aqs_merged <- aqs_monitors %>%
     Datum == 'WGS84' ~ 4326,
     Datum == 'NAD83' ~ 4629,
     Datum == 'NAD27' ~ 4267,
-    is.na(Datum) ~ 4326)) %>% # assume 4326 projection for missing datumsde
+    is.na(Datum) ~ 4326)) %>% # assume 4326 projection for missing datums
     filter(Latitude != 0) %>% 
   distinct() 
 
