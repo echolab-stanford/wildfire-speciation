@@ -6,3 +6,5 @@ Wildfires significantly contribute to ambient air pollution, yet our understandi
 
 ## Organization
 Results from the paper are in the figures/clean and tables/clean folders. Code to replicate results are in the scripts folder. Data are in Dropbox.
+
+NOTE: THIS REPO IS IN PROGRESS. CHECK BACK FOR UPDATES.
