@@ -1,4 +1,6 @@
-# wildfire-speciation
+# NOTE: THIS REPO IS IN PROGRESS. CHECK BACK FOR UPDATES.
+
+## wildfire-speciation
 Repo supporting [Krasovich Southworth et al 2025](https://pubs.acs.org/doi/full/10.1021/acs.est.4c09011) "The Influence of Wildfire Smoke on Ambient PM2.5 Chemical Species Concentrations in the Contiguous US".
 
 ## Abstract 
@@ -7,4 +9,5 @@ Wildfires significantly contribute to ambient air pollution, yet our understandi
 ## Organization
 Results from the paper are in the figures/clean and tables/clean folders. Code to replicate results are in the scripts folder. Data are in Dropbox.
 
-# NOTE: THIS REPO IS IN PROGRESS. CHECK BACK FOR UPDATES.
+## Data
+All data used in this project as well as all figures in the paper can be found in [Dropbox](https://www.dropbox.com/scl/fo/0cpn5bnx5kpt5djcfn3y6/AJhH87izPKe0hb70qDEYZHQ?rlkey=0ldpk07s2yd64g3qvjb41iq0n&st=7yl3upfr&dl=0).
