@@ -10,4 +10,4 @@ Wildfires significantly contribute to ambient air pollution, yet our understandi
 Results from the paper are in the figures/clean and tables/clean folders. Code to replicate results are in the scripts folder. Data are in Dropbox.
 
 ## Data
-All data used in this project as well as all figures in the paper can be found in [Dropbox](https://www.dropbox.com/scl/fo/6xo957eipas8lsks9cdip/ABB9JpLzgG6NUBp0FH3xtIY?rlkey=f1mqctmvlcmvv6qq7hkwo46xh&st=8ttd0l31&dl=0).
+All data used in this project as well as all figures in the paper can be found in [Dropbox](https://www.dropbox.com/scl/fo/gm5zt8k3mif88awv55tvj/AA8M9YR-UVURtvI_DHIouio?rlkey=11pyi7wsq8d6npqq9zatw4vrd&st=zljm63oe&dl=0).
