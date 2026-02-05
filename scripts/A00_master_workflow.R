@@ -1,6 +1,9 @@
 # Emma Krasovich Southworth, emmars@stanford.edu
 # Created: October 29, 2022 | Last Updated: Jan 3, 2024
-# Description: Full workflow for reading in, cleaning, data for the wildfire speciation project.
+# Description: Full workflow for reading in, cleaning, data for the 
+# Krasovich-Southworth et al., 2025 paper on wildfire smoke chemical composition.
+# DOI: 10.1021/acs.est.4c09011
+
 # This script will load all relevant libraries + functions that are necessary for the workflow,
 # and run regressions of interest.
 
@@ -8,11 +11,9 @@
 # source the functions and libraries
 source(here::here("0_functions.R"))
 source(here::here("0_packages.R"))
-data_fp = "~/BurkeLab Dropbox/projects/ws_project/data"
-#dropbox_data_fp = '/Users/ekrasovich/Library/CloudStorage/GoogleDrive-emmars@stanford.edu/Shared drives/echolab:data'
-gee_data_fp = "~/My Drive (emmars@stanford.edu)/Research/G_ECHOLab/GEE_Echolab_Export"
-results_fp = "~/BurkeLab Dropbox/projects/ws_project/figures"
-boundaries_fp = '~/BurkeLab Dropbox/data/boundaries'
+data_fp = "~/BurkeLab Dropbox/projects/wildfire-speciation-public-repo/data"   
+gee_data_fp = file.path(data_fp, "intermediate/gee")
+results_fp = "~/BurkeLab Dropbox/projects/wildfire-speciation-public-repo/figures"
 # get rid of scientific notation
 options(scipen = 999)
 
@@ -21,8 +22,6 @@ options(scipen = 999)
 list.files(here::here(), full.names=T, pattern = '(^A|^B|^C)') %>%
   str_subset("\\.R$") %>%
   str_subset('workflow', negate = TRUE) %>%
-  str_subset('combine_speciation_w_CASno_and_RSLs', negate = TRUE) %>%
-  str_subset('C02_CSN_V_improve_sensitivty', negate = TRUE) %>%
 walk(source)
 
 
@@ -400,18 +399,7 @@ if(file.exists(".drake")) {
 }
 make(wildfire_plan, cache = drake_cache)
   
-  # --------------------------------------------------------------------------------
-  # SUPPLEMENTARY FIGURES
-  # -------------------------------------------------------------------------------
-  # coeffs_robustness = target(
-  #   create_coeff_sensitivity_SI_figures(
-  #     clean_PMspec_df,
-  #     parameter_categories,
-  #     spec_pal)),
-  # 
-  # SB_agg_df = target(
-  #   make_SI_burned_structures_time_series_plot(
-  #     globfire_structure_joined_df))
+
     
   
  

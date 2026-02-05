@@ -2,7 +2,7 @@
 # # Last Updated: April 2, 2024
 # # Description: run regression on burned structures and smoke speciation + plot response curves at different levels of smoke
 
-# loadd(c(burned_struc_smoke_spec_df, parameter_categories, spec_pal), cache = drake_cache)
+# loadd(c(burned_struc_smoke_spec_df, parameter_categories, spec_pal), cache = drake_cache())
 
 # function
 estimating_conc_response_2_burned_structures <- function(burned_struc_smoke_spec_df, 
@@ -115,7 +115,7 @@ estimating_conc_response_2_burned_structures <- function(burned_struc_smoke_spec
                                 aes(x = species_long,
                                     y = pct_change_struct_vs_nostruct,
                                     color = species_type)) +
-      geom_point(size=4, alpha = 0.6, stat = "identity", position = position_dodge(width = .8)) +
+      geom_point(size=6, alpha = 0.6, stat = "identity", position = position_dodge(width = .8)) +
       geom_linerange(aes(ymin = (pct_change_CI25),
                          ymax = (pct_change_CI975)), stat = "identity", position = position_dodge(width = .8)) +
      scale_x_discrete(limits = rev(limits)) +
@@ -134,10 +134,21 @@ estimating_conc_response_2_burned_structures <- function(burned_struc_smoke_spec
             title= element_text(size=12, face='bold'),
             legend.position = "top",
             axis.title.x = element_text(size=11, face = 'plain'),
-            axis.title.y = element_text(size=11, face = 'plain')) +
-      theme(axis.text.y = element_text(angle = 0, hjust = 1)) 
+            axis.title.y = element_text(size=11, face = 'plain'),
+            axis.text.y = element_text(
+              size=14, face = 'plain', angle = 0, hjust = 1, margin = margin(r = 2)),
+            axis.text.x = element_text(
+              size=14, face = 'plain', margin = margin(r = 2)))
     burned_structures_reg_plot
 
+    ggsave(filename = 'burned_struc_coeffs.png',
+           plot = burned_structures_reg_plot,
+           path = file.path("~/BurkeLab Dropbox/projects/wildfire-speciation-public/figures/presentation figs"),
+           scale = 1,
+           width = 12,
+           height = 10,
+           dpi = 320)
+    
     
     # save file
     ggsave(filename = 'Fig4A_selected_species_smoke_coeff_burned_figs.pdf',

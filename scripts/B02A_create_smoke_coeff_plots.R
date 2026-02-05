@@ -96,7 +96,7 @@ pct_change_samp_reg_plot <- ggplot(full_samp_PMcoeffs_normalized,
                                        y = 100*norm_est, 
                                        color=species_type, 
                                    )) +
-  geom_point(size=3, alpha = 0.6, stat = "identity") +
+  geom_point(size=6, alpha = 0.6, stat = "identity") +
   geom_linerange(aes(ymin = (100*norm_CI25), 
                      ymax = (100*norm_CI975)), stat = "identity") +
   scale_x_discrete(limits = c(
@@ -129,21 +129,68 @@ pct_change_samp_reg_plot <- ggplot(full_samp_PMcoeffs_normalized,
         panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         axis.line = element_line(colour = "black"),
         title= element_text(size=12, face='bold'),
-        axis.title.x = element_text(size=11, face = 'plain'),
-        axis.title.y = element_text(size=11, face = 'plain')) +
+        axis.title.x = element_text(size=14, face = 'plain'),
+        axis.title.y = element_text(size=11, face = 'plain', margin = margin(r = 5)),
+        axis.text.x = element_text(size = 14),  # reduces space to the right of y labels
+        axis.text.y = element_text(size = 14, margin = margin(r = 2)),  # reduces space to the right of y labels
+        ) +
   geom_hline(yintercept = 0, linetype = "dashed", color = 'grey50') +
   guides(color = 'none')
 pct_change_samp_reg_plot
 
+ggsave(
+  filename = 'PRES_pct_change_PM_spec_smokeMF_all_chems.png',
+  plot = pct_change_samp_reg_plot,
+  path = file.path("~/BurkeLab Dropbox/projects/wildfire-speciation-public/figures/presentation figs"),
+  scale = 1,
+  width = 10,
+  height = 10,
+  dpi = 320) 
+
+blow_out_plot <- ggplot(full_samp_PMcoeffs_normalized %>% 
+                          filter(species_long %in% c("Organic Carbon (OC)", 
+                                                     "Elemental Carbon (EC)",
+                                                     "Phosphorus (P)",
+                                                     "Potassium (K)")), 
+                                   aes(x = species_long,
+                                       y = 100*norm_est, 
+                                       color=species_type, 
+                                   )) +
+  geom_point(size=6, alpha = 0.6, stat = "identity") +
+  geom_linerange(aes(ymin = (100*norm_CI25), 
+                     ymax = (100*norm_CI975)), stat = "identity") +
+  scale_x_discrete(limits = c(
+    "Organic Carbon (OC)", "Elemental Carbon (EC)",
+    "Potassium (K)","Phosphorus (P)")) +
+  scale_color_manual(values= spec_pal) +
+  coord_flip() +
+  geom_hline(yintercept = 0, linetype = "dashed", color = 'grey') +
+  labs(#y = expression(paste('% change relative to average nonsmoke day concentration')),
+       x = 'Species') +
+       #color = 'Species Category',
+       #title = expression(paste("% change in concentration for 1 ug/", m^3, " increase in smoke ", "PM"["2.5"]))) + 
+  theme_light() + 
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black"),
+        title= element_text(size=12, face='bold'),
+        axis.title.x = element_text(size=14, face = 'plain'),
+        axis.title.y = element_text(size=11, face = 'plain', margin = margin(r = 5)),
+        axis.text.x = element_text(size = 14),  # reduces space to the right of y labels
+        axis.text.y = element_text(size = 14, margin = margin(r = 2)),  # reduces space to the right of y labels
+  ) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = 'grey50') +
+  guides(color = 'none')
+blow_out_plot
 
 # save file
 ggsave(
-  filename = 'Fig2_pct_change_PM_spec_smokeMF_all_chems_raw.pdf',
-  plot = pct_change_samp_reg_plot,
-  path = file.path(results_fp, 'Fig2'),
+  filename = 'blow_out_coeffs_pct_change.png',
+  plot = blow_out_plot,
+  path = file.path("~/BurkeLab Dropbox/projects/wildfire-speciation-public/figures/presentation figs"),
   scale = 1,
   width = 7,
-  height = 10,
+  height = 7,
   dpi = 320) 
 
 ggsave(
@@ -154,6 +201,8 @@ ggsave(
   width = 7,
   height = 10,
   dpi = 320) 
+
+
 
 # -------------------------------------------------------------------------------
 # SMOKE ONLY LOG SCALE
