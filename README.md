@@ -46,15 +46,15 @@ If you use this code or data, please cite:
 BibTeX:
 
 ```bibtex
-@article{krasovichsouthworth2025wildfire,
-  title     = {The Influence of Wildfire Smoke on Ambient {PM2.5} Chemical Species Concentrations in the Contiguous {US}},
-  author    = {Krasovich Southworth, Emma and Qiu, Minghao and Gould, Carlos F. and Kawano, Ayako and Wen, Jeff and Heft-Neal, Sam and Kilpatrick Voss, Kara and Lopez, Alandra and Fendorf, Scott and Burney, Jennifer Anne and Burke, Marshall},
-  journal   = {Environmental Science \& Technology},
-  volume    = {59},
-  number    = {6},
-  pages     = {2961--2973},
-  year      = {2025},
-  doi       = {10.1021/acs.est.4c09011}
+@article{krasovich2025influence,
+  title={The influence of wildfire smoke on ambient PM2. 5 chemical species concentrations in the contiguous US},
+  author={Krasovich Southworth, Emma and Qiu, Minghao and Gould, Carlos F and Kawano, Ayako and Wen, Jeff and Heft-Neal, Sam and Kilpatrick Voss, Kara and Lopez, Alandra and Fendorf, Scott and Burney, Jennifer Anne and others},
+  journal={Environmental science \& technology},
+  volume={59},
+  number={6},
+  pages={2961--2973},
+  year={2025},
+  publisher={ACS Publications}
 }
 ```
 
